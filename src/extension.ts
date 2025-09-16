@@ -39,6 +39,7 @@ import { openRootcauseAnalysis }      from './modules/rootcauseAnalysis';
 import { registerWiFiAnalyzer }       from './modules/wifiAnalyzer';
 import { TraceroutePanel }            from './modules/traceroute';
 import { PingPanel }                  from './modules/pingPanel';
+import { openAzureCidrAnalyzer }      from './modules/azureCidrAnalyzer';
 import {
   activateNetworkColorizer,
   deactivateNetworkColorizer
@@ -63,6 +64,7 @@ const enum Command {
   IANA_PORT_CALC  = 'net-commander.ianaportcalc',
   PEERING_DB      = 'net-commander.peeringdb',
   EMERGENCY_CHECK = 'net-commander.rootcauseAnalysis',
+  AZURE_CIDR      = 'net-commander.azureCidrAnalyzer',
   OPEN_WELCOME    = 'netCommander.openWelcome'
 }
 
@@ -83,7 +85,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
     [Command.IANA_PORT_CALC, () => openIanaPortCalculator(context)],
     [Command.PEERING_DB,      () => openPeeringDB(context)],
-    [Command.EMERGENCY_CHECK,() => openRootcauseAnalysis(context)]
+    [Command.EMERGENCY_CHECK,() => openRootcauseAnalysis(context)],
+    [Command.AZURE_CIDR,      () => openAzureCidrAnalyzer(context)]
   ];
   for (const [id, fn] of cmds) {
     context.subscriptions.push(vscode.commands.registerCommand(id, fn));

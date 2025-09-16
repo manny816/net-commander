@@ -59,6 +59,12 @@ Aimed to be a powerful all-in-one toolkit for Network Engineers, DevOps Engineer
 
 <br>
 
+## Microsoft Azure CIDRs Analyzer
+![Microsoft Azure CIDRs Analyzer](https://raw.githubusercontent.com/elelabdev/net-commander/refs/heads/main/media/img/readme/microsoft-azure-cidr-analyzer.png)  
+You can now query right from Visual Studio Code all Microsoft Azure subscriptions and search for specific CIDRs in use, this will help you understand if the CIDR is in use to avoid overlapping. Net Commander allow also to search all CIDRs in use at once, great for reporting and you can easily export the results in CSV right in your project folder.
+
+<br>
+
 ## Root Cause Analysis
 ![Root Cause Analysis](https://raw.githubusercontent.com/elelabdev/net-commander/refs/heads/main/media/img/readme/rootcause-analysis.gif)  
 Root-cause analysis must be **data-driven** and free from assumptions or feelings.  
