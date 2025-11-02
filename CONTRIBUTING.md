@@ -21,7 +21,7 @@ First off, I would like to thank you so much for considering the extension helpf
 
 If you find a bug or unexpected behavior:
 
-1. Check existing [Issues](https://github.com/elelabdev/net-commander/issues) to see if it’s already been reported.  
+1. Check existing [Issues](https://github.com/skhell/net-commander/issues) to see if it’s already been reported.  
 2. If not, open a new issue and include:
    - A clear and descriptive title.
    - Steps to reproduce.
@@ -51,8 +51,8 @@ Please use the **feature request** template when prompted.
 ## Your First Code Contribution
 
 Unsure where to start? Look for issues labeled:
-- [`good first issue`](https://github.com/elelabdev/net-commander/labels/good%20first%20issue)
-- [`help wanted`](https://github.com/elelabdev/net-commander/labels/help%20wanted)
+- [`good first issue`](https://github.com/skhell/net-commander/labels/good%20first%20issue)
+- [`help wanted`](https://github.com/skhell/net-commander/labels/help%20wanted)
 
 These are typically simpler tasks ideal for first‑time contributors.
 

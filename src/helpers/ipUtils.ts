@@ -5,7 +5,7 @@
  *                Solution Architects streamlining everyday workflows and  * 
  *                accelerating data-driven root-cause analysis.            *
  *                                                                         *
- *   Github:      https://github.com/elelabdev/net-commander               *
+ *   Github:      https://github.com/skhell/net-commander               *
  *                                                                         *
  *   Icon Author: elelab                                                   *
  *                                                                         *

@@ -1,12 +1,12 @@
 /***************************************************************************
  *   Extension:   Net Commander                                            *
- *   Author:      elelabdev                                                *
+ *   Author:      skhell                                                *
  *   Description: Net Commander is the extension for Visual Studio Code    *
  *                dedicated to Network Engineers, DevOps Engineers and     *
  *                Solution Architects streamlining everyday workflows and  * 
  *                accelerating data-driven root-cause analysis.            *
  *                                                                         *
- *   Github:      https://github.com/elelabdev/net-commander               *
+ *   Github:      https://github.com/skhell/net-commander               *
  *                                                                         *
  *   Icon Author: elelab                                                   *
  *                                                                         *

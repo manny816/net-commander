@@ -1,12 +1,12 @@
 /***************************************************************************
  *   Extension:   Net Commander                                            *
- *   Author:      elelabdev                                                *
+ *   Author:      skhell                                                *
  *   Description: Net Commander is the extension for Visual Studio Code    *
  *                dedicated to Network Engineers, DevOps Engineers and     *
  *                Solution Architects streamlining everyday workflows and  * 
  *                accelerating data-driven root-cause analysis.            *
  *                                                                         *
- *   Github:      https://github.com/elelabdev/net-commander               *
+ *   Github:      https://github.com/skhell/net-commander               *
  *                                                                         *
  *   Icon Author: elelab                                                   *
  *                                                                         *
@@ -31,7 +31,7 @@ import { join } from 'path';
 // EXPORT functions
 // =========================================================================
 
-// BEGIN function to ensure /elelabdev exist or not in user worskpace
+// BEGIN function to ensure /skhell exist or not in user worskpace
 async function ensureModuleFolder(moduleName: string): Promise<string | undefined> {
   const wk = vscode.workspace.workspaceFolders?.[0];
   if (!wk) {
@@ -39,7 +39,7 @@ async function ensureModuleFolder(moduleName: string): Promise<string | undefine
     return;
   }
 
-  const moduleFolder = join(wk.uri.fsPath, 'elelabdev', 'net-commander', moduleName);
+  const moduleFolder = join(wk.uri.fsPath, 'skhell', 'net-commander', moduleName);
   try {
     await fs.mkdir(moduleFolder, { recursive: true });
   } catch (e: any) {
@@ -47,12 +47,12 @@ async function ensureModuleFolder(moduleName: string): Promise<string | undefine
     return;
   }
 
-  // to prevent sensitive info to be uploaded to GIT unintentionally I ensure .gitignore excludes /elelabdev
+  // to prevent sensitive info to be uploaded to GIT unintentionally I ensure .gitignore excludes /skhell
   const gitignorePath = join(wk.uri.fsPath, '.gitignore');
   try {
     await fs.access(gitignorePath);
     let content = await fs.readFile(gitignorePath, 'utf8');
-    const entry = '/elelabdev';
+    const entry = '/skhell';
     if (!content.includes(entry)) {
       if (!content.endsWith('\n')) content += '\n';
       content += entry + '\n';
@@ -64,7 +64,7 @@ async function ensureModuleFolder(moduleName: string): Promise<string | undefine
 
   return moduleFolder;
 }
-// END function to ensure /elelabdev exist or not in user worskpace
+// END function to ensure /skhell exist or not in user worskpace
 
 
 

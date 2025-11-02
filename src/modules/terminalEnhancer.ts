@@ -1,12 +1,12 @@
 /***************************************************************************
  *   Extension:   Net Commander                                            *
- *   Author:      elelabdev                                                *
+ *   Author:      skhell                                                *
  *   Description: Net Commander is the extension for Visual Studio Code    *
  *                dedicated to Network Engineers, DevOps Engineers and     *
  *                Solution Architects streamlining everyday workflows and  * 
  *                accelerating data-driven root-cause analysis.            *
  *                                                                         *
- *   Github:      https://github.com/elelabdev/net-commander               *
+ *   Github:      https://github.com/skhell/net-commander               *
  *                                                                         *
  *   Icon Author: elelab                                                   *
  *                                                                         *
@@ -110,7 +110,7 @@ export function activate(context: vscode.ExtensionContext) {
       const workspaceRoot =
         vscode.workspace.workspaceFolders?.[0].uri.fsPath || process.cwd();
       const timestamp = createTimestampFolderName();
-      const basePath = path.join(workspaceRoot, 'elelabdev', 'net-commander', 'ssh-downloads', timestamp);
+      const basePath = path.join(workspaceRoot, 'skhell', 'net-commander', 'ssh-downloads', timestamp);
       const baseUri = vscode.Uri.file(basePath);
       await vscode.workspace.fs.createDirectory(baseUri);
 

@@ -7,19 +7,19 @@
     "workspace",
     "ui"
   ],
-  "publisher": "elelabdev",
+  "publisher": "skhell",
   "pricing": "Free",
   "category": "Formatters, Others",
   "icon": "media/img/icons/net-commander-icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/elelabdev/net-commander"
+    "url": "https://github.com/skhell/net-commander"
   },
   "bugs": {
-    "url": "https://github.com/elelabdev/net-commander/issues"
+    "url": "https://github.com/skhell/net-commander/issues"
   },
   "sponsor": {
-    "url": "https://github.com/sponsors/elelabdev"
+    "url": "https://github.com/sponsors/skhell"
   },
   "engines": {
     "vscode": "^1.99.0"
