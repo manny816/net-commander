@@ -2,7 +2,7 @@
   "name": "net-commander",
   "displayName": "Net Commander ",
   "description": "Net Commander is the extension for Visual Studio Code dedicated to Network Engineers, DevOps Engineers and Solution Architects streamlining everyday workflows and accelerating data-driven root-cause analysis.",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "extensionKind": [
     "workspace",
     "ui"
@@ -202,11 +202,14 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run rebuild",
+    "clean": "rm -rf out",
     "compile": "tsc -p ./",
+    "rebuild": "npm run clean && npm run compile",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "npm run rebuild && vsce package"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

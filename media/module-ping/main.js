@@ -68,8 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   
     exportBtn.addEventListener('click', () => {
-      let csv = '';
+      // I export one file per target
       Object.values(resultsByTarget).forEach(group => {
+        let csv = '';
         group.replies.forEach(r => {
           csv += [
             r.seq || '',
@@ -79,12 +80,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const s = group.summary;
         if (s) {
-          csv += `Summary for ${group.target}:,Sent=${s.transmitted},Rec=${s.received},Loss=${s.loss},Time=${s.totalTime},RTT=${s.rtt
+          csv += `Summary:,Sent=${s.transmitted},Rec=${s.received},Loss=${s.loss},Time=${s.totalTime},RTT=${s.rtt
             ? `${s.rtt.min}/${s.rtt.avg}/${s.rtt.max}/${s.rtt.mdev}`
             : 'N/A'}\n`;
         }
+        vscode.postMessage({ command: 'exportCSV', data: { csv, targets: [group.target] } });
       });
-      vscode.postMessage({ command: 'exportCSV', data: { csv } });
     });
   
     window.addEventListener('message', ({ data }) => {

@@ -3,7 +3,7 @@
  *   Author:      skhell                                                *
  *   Description: Net Commander is the extension for Visual Studio Code    *
  *                dedicated to Network Engineers, DevOps Engineers and     *
- *                Solution Architects streamlining everyday workflows and  * 
+ *                Solution Architects streamlining everyday workflows and  *
  *                accelerating data-driven root-cause analysis.            *
  *                                                                         *
  *   Github:      https://github.com/skhell/net-commander               *
@@ -26,359 +26,356 @@ import * as vscode from 'vscode';
 import * as os from 'os';
 import { spawn, ChildProcess } from 'child_process';
 import { getNonce } from '../helpers/nonce';
+import { exportCsv } from '../helpers/exporter';
 
 
 // =========================================================================
-// EXPORT functions
+// INTERFACES
 // =========================================================================
-export interface TracerouteHop {
-  hop: number;
-  hostname?: string;
+interface TracerouteRequest {
+  command: 'traceroute';
+  data: { targets: string[] };
+}
+interface StopRequest { command: 'stop' }
+interface ClearRequest { command: 'clear' }
+interface ExportCsvRequest { command: 'exportCSV'; data: { csv: string; targets: string[] } }
+type IncomingMessage = TracerouteRequest | StopRequest | ClearRequest | ExportCsvRequest;
+
+interface TracerouteHop {
+  hop: string;
+  hostname: string;
   ip: string;
-  rtt?: string;
+  rtt1: string;
+  rtt2: string;
+  rtt3: string;
+  status: 'success' | 'timeout';
+  timestamp: string;
+  localIP: string;
+  macAddress: string;
+  target: string;
 }
 
-export interface TracerouteNode {
-  id: string;
-  label: string;
-  ip?: string;
-  hostname?: string;
-  x?: number;
-  y?: number;
+interface TracerouteSummary {
+  totalHops: number;
+  successHops: number;
+  timeoutHops: number;
+  completed: boolean;
 }
 
-export interface Topology {
-  nodes: TracerouteNode[];
-  links: { source: string; target: string }[];
-}
 
+// =========================================================================
+// EXPORT class
+// =========================================================================
 export class TraceroutePanel {
   public static currentPanel: TraceroutePanel | undefined;
-  private readonly _panel: vscode.WebviewPanel;
-  private readonly _extensionUri: vscode.Uri;
-  private _disposables: vscode.Disposable[] = [];
-  private activeProcess: ChildProcess | undefined;
-  private topology: Topology = { nodes: [], links: [] };
+  private activeProcesses: ChildProcess[] = [];
+  private disposables: vscode.Disposable[] = [];
 
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
-    this._panel = panel;
-    this._extensionUri = extensionUri;
-
-    panel.webview.onDidReceiveMessage(
-      message => this.onMessage(message),
-      null,
-      this._disposables
-    );
-
-    panel.onDidDispose(() => this.dispose(), null, this._disposables);
+  private constructor(
+    private panel: vscode.WebviewPanel,
+    private extensionUri: vscode.Uri
+  ) {
     panel.webview.html = this.showWebviewContent();
+    panel.webview.onDidReceiveMessage(msg => this.handleMessage(msg), null, this.disposables);
+    panel.onDidDispose(() => this.dispose(), null, this.disposables);
   }
 
-
-
-// BEGIN function to generate user webview content
   public static createOrShow(extensionUri: vscode.Uri) {
     const column = vscode.ViewColumn.Beside;
     if (TraceroutePanel.currentPanel) {
-      TraceroutePanel.currentPanel._panel.reveal(column);
+      TraceroutePanel.currentPanel.panel.reveal(column);
     } else {
       const panel = vscode.window.createWebviewPanel(
         'traceroutePanel',
         'NetCommander Traceroute',
-        { viewColumn: column, preserveFocus: false },
-        {
-          enableScripts: true,
-          retainContextWhenHidden: true,
-          localResourceRoots: [
-            vscode.Uri.joinPath(extensionUri, 'media', 'libs'),
-            vscode.Uri.joinPath(extensionUri, 'media', 'module-traceroute'),
-            vscode.Uri.joinPath(extensionUri, 'media', 'common', 'css')
-          ]
-        }
+        column,
+        { enableScripts: true }
       );
       TraceroutePanel.currentPanel = new TraceroutePanel(panel, extensionUri);
     }
   }
 
   public dispose() {
+    this.stopAll();
+    this.disposables.forEach(d => d.dispose());
+    this.panel.dispose();
     TraceroutePanel.currentPanel = undefined;
-    this._panel.dispose();
-    this._disposables.forEach(d => d.dispose());
   }
 
-  private onMessage(message: any) {
-    switch (message.command) {
-      case 'traceroute':
-        this.resetTopology();
-        this.startTraceroute(message.data.target);
-        break;
-      case 'stop':
-        this.stopTraceroute();
-        this._panel.webview.postMessage({ command: 'toggleStop', data: { show: false } });
-        break;
-      case 'clear':
-        this.resetTopology();
-        this._panel.webview.postMessage({ command: 'clearResults' });
-        break;
-      case 'exportCSV':
-        this.exportCSV(this.generateCSV());
-        break;
+  private handleMessage(message: IncomingMessage) {
+    try {
+      switch (message.command) {
+        case 'traceroute':
+          this.clearResults();
+          this.toggleStop(true);
+          this.runTracerouteMultiple(message.data.targets);
+          break;
+        case 'stop':
+          this.stopAll();
+          this.toggleStop(false);
+          break;
+        case 'clear':
+          this.clearResults();
+          break;
+        case 'exportCSV':
+          exportCsv('traceroute', 'traceroute', message.data.csv,
+            'Hop,Hostname,IP,RTT1,RTT2,RTT3,Status,Target,Source,Source Mac,Timestamp\n',
+            message.data.targets
+          );
+          break;
+      }
+    } catch (e) {
+      console.error('TraceroutePanel error', e);
     }
   }
 
-  private showWebviewContent(): string {
-    const webview    = this._panel.webview;
-    const nonce      = getNonce();
-    const csp        = webview.cspSource;
-  
-    const commonCssUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'media', 'common', 'css', 'style.css')
-    );
-    const elementsUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'media', 'libs', 'vscode-elements', 'bundled.js')
-    );
-    const d3Uri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'media', 'libs', 'd3', 'd3.v7.min.js')
-    );
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'media', 'module-traceroute', 'main.js')
-    );
+  private runTracerouteMultiple(targets: string[]) {
+    for (const target of targets) {
+      this.runTraceroute(target);
+    }
+  }
 
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'media', 'module-traceroute', 'style.css')
-    );
-  
+  private runTraceroute(target: string) {
+    const isWindows = os.platform().startsWith('win');
+    const cmd = isWindows ? 'tracert' : 'traceroute';
+    const args = [target];
+    const { localIP, macAddress } = TraceroutePanel.getLocalNetworkInfo();
+
+    const child = spawn(cmd, args);
+    let buffer = '';
+    let hopCount = 0;
+    let successCount = 0;
+    let timeoutCount = 0;
+
+    child.stdout?.setEncoding('utf8');
+    child.stdout?.on('data', (chunk: string) => {
+      buffer += chunk;
+      const lines = chunk.split(/\r?\n/);
+
+      for (const line of lines) {
+        const hop = this.parseTracerouteLine(line);
+        if (hop) {
+          hopCount++;
+          if (hop.status === 'success') {
+            successCount++;
+          } else {
+            timeoutCount++;
+          }
+          this.postHop(target, hop, localIP, macAddress);
+        }
+      }
+    });
+
+    child.stderr?.on('data', (err: Buffer) => {
+      console.error(`Traceroute error (${target}):`, err.toString());
+    });
+
+    child.on('close', () => {
+      const summary: TracerouteSummary = {
+        totalHops: hopCount,
+        successHops: successCount,
+        timeoutHops: timeoutCount,
+        completed: true
+      };
+      this.postSummary(target, summary);
+      this.activeProcesses = this.activeProcesses.filter(p => p !== child);
+      if (this.activeProcesses.length === 0) {
+        this.toggleStop(false);
+      }
+    });
+
+    this.activeProcesses.push(child);
+  }
+
+  private stopAll() {
+    for (const p of this.activeProcesses) {
+      p.kill();
+    }
+    this.activeProcesses = [];
+  }
+
+  private clearResults() {
+    this.panel.webview.postMessage({ command: 'clearResults' });
+  }
+
+  private toggleStop(show: boolean) {
+    this.panel.webview.postMessage({ command: 'toggleStop', data: { show } });
+  }
+
+  private postHop(
+    target: string,
+    hop: { hop: string; hostname: string; ip: string; rtt1: string; rtt2: string; rtt3: string; status: 'success' | 'timeout' },
+    localIP: string,
+    macAddress: string
+  ) {
+    this.panel.webview.postMessage({
+      command: 'tracerouteResult',
+      data: {
+        target,
+        type: 'hop',
+        row: {
+          ...hop,
+          timestamp: TraceroutePanel.formatTimestamp(new Date()),
+          localIP,
+          macAddress,
+          target
+        } as TracerouteHop
+      }
+    });
+  }
+
+  private postSummary(target: string, summary: TracerouteSummary) {
+    this.panel.webview.postMessage({
+      command: 'tracerouteResult',
+      data: { target, type: 'summary', summary }
+    });
+  }
+
+  private parseTracerouteLine(line: string): { hop: string; hostname: string; ip: string; rtt1: string; rtt2: string; rtt3: string; status: 'success' | 'timeout' } | null {
+    line = line.trim();
+
+    if (
+      line.startsWith('traceroute to') ||
+      line.startsWith('Tracing route to') ||
+      line.startsWith('over a maximum') ||
+      line === 'Trace complete.' ||
+      line === ''
+    ) {
+      return null;
+    }
+
+    if (/^\s*(\d+)\s+\*\s+\*\s+\*/.test(line)) {
+      const hopNum = line.match(/^\s*(\d+)/)?.[1] || '?';
+      return {
+        hop: hopNum,
+        hostname: '*',
+        ip: '*',
+        rtt1: '*',
+        rtt2: '*',
+        rtt3: '*',
+        status: 'timeout'
+      };
+    }
+
+    const linuxRe = /^\s*(\d+)\s+(\S+)\s+\(([\d.]+)\)\s+([\d.]+)\s*ms\s+([\d.]+)\s*ms\s+([\d.]+)\s*ms/;
+    let m = linuxRe.exec(line);
+    if (m) {
+      return {
+        hop: m[1],
+        hostname: m[2],
+        ip: m[3],
+        rtt1: `${m[4]} ms`,
+        rtt2: `${m[5]} ms`,
+        rtt3: `${m[6]} ms`,
+        status: 'success'
+      };
+    }
+
+    const linuxNoHostRe = /^\s*(\d+)\s+([\d.]+)\s+([\d.]+)\s*ms\s+([\d.]+)\s*ms\s+([\d.]+)\s*ms/;
+    m = linuxNoHostRe.exec(line);
+    if (m) {
+      return {
+        hop: m[1],
+        hostname: m[2],
+        ip: m[2],
+        rtt1: `${m[3]} ms`,
+        rtt2: `${m[4]} ms`,
+        rtt3: `${m[5]} ms`,
+        status: 'success'
+      };
+    }
+
+    const winRe = /^\s*(\d+)\s+(<?\d+)\s*ms\s+(<?\d+)\s*ms\s+(<?\d+)\s*ms\s+(.+?)(?:\s+\[([\d.]+)\])?\s*$/;
+    m = winRe.exec(line);
+    if (m) {
+      const ip = m[6] || m[5].trim();
+      const hostname = m[6] ? m[5].trim() : ip;
+      return {
+        hop: m[1],
+        hostname,
+        ip,
+        rtt1: `${m[2]} ms`,
+        rtt2: `${m[3]} ms`,
+        rtt3: `${m[4]} ms`,
+        status: 'success'
+      };
+    }
+
+    return null;
+  }
+
+  private static getLocalNetworkInfo() {
+    const nets = os.networkInterfaces();
+    let localIP = 'N/A', macAddress = 'N/A';
+    for (const dev of Object.values(nets)) {
+      if (!dev) continue;
+      for (const inf of dev) {
+        if (inf.family === 'IPv4' && !inf.internal) {
+          localIP = inf.address;
+          macAddress = inf.mac;
+          break;
+        }
+      }
+      if (localIP !== 'N/A') break;
+    }
+    return { localIP, macAddress };
+  }
+
+  private static formatTimestamp(d: Date) {
+    const pad = (n: number) => n < 10 ? '0' + n : String(n);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      + ` ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+
+  private showWebviewContent(): string {
+    const nonce = getNonce();
+    const csp = this.panel.webview.cspSource;
+    const webview = this.panel.webview;
+    const elemUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'libs', 'vscode-elements', 'bundled.js'));
+    const style = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'common', 'css', 'style.css'));
+    const script = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', 'module-traceroute', 'main.js'));
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="
-          default-src 'none';
-          script-src 'nonce-${nonce}' ${csp};
-          style-src  'unsafe-inline' ${csp};
-          img-src    ${csp} data:;
-          font-src   ${csp} data:;
-        ">
-  <link rel="stylesheet" nonce="${nonce}" href="${commonCssUri}">
-  <link rel="stylesheet" href="${styleUri}" type="text/css"/> 
-  <script nonce="${nonce}" src="${d3Uri}"></script>
-  <script type="module" nonce="${nonce}" src="${elementsUri}"></script>
-  <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
+    content="default-src 'none';
+             img-src ${csp} https: data:;
+             script-src 'nonce-${nonce}' ${csp};
+             style-src 'unsafe-inline' ${csp};
+             font-src ${csp} https: data:;">
+  <link rel="stylesheet" href="${style}" />
+  <style>
+    .hop-success { color: #4ec9b0; }
+    .hop-timeout { color: #f14c4c; }
+    .summary-row { font-weight: bold; background: var(--vscode-editor-inactiveSelectionBackground); }
+  </style>
 </head>
 <body>
   <div class="layout">
     <div class="top-bar">
-      <h1>Traceroute</h1>
+      <h1>Traceroute utility</h1>
     </div>
+
     <div class="header flex-row section-padding">
       <vscode-form-container responsive="true">
-        <vscode-label for="target">Target</vscode-label>
-        <vscode-textfield id="target" placeholder="1.1.1.1"></vscode-textfield>
+        <vscode-label for="targets">Targets (comma or newline)</vscode-label>
+        <vscode-textarea id="targets" placeholder="8.8.8.8&#10;1.1.1.1"></vscode-textarea>
         <vscode-form-group>
-          <vscode-button id="generateBtn">Generate</vscode-button>
-          <vscode-button id="exportCSVBtn">Export CSV</vscode-button>
-          <vscode-button id="resetViewBtn" secondary>Reset View</vscode-button>
+          <vscode-button id="traceBtn">Trace</vscode-button>
+          <vscode-button id="exportBtn">Export</vscode-button>
           <vscode-button id="clearBtn" secondary>Clear</vscode-button>
         </vscode-form-group>
       </vscode-form-container>
     </div>
     <div class="middle section-padding scrollable-y">
-      <svg></svg>
+      <div id="results"></div>
     </div>
   </div>
+  <script type="module" nonce="${nonce}" src="${elemUri}"></script>
+  <script type="module" nonce="${nonce}" src="${script}"></script>
 </body>
 </html>`;
   }
-// END function to generate user webview content
-
-  private resetTopology() {
-    this.topology = { nodes: [], links: [] };
-    const local = getLocalNetworkInfo();
-    this.topology.nodes.push({
-      id: 'source',
-      label: `My host: ${local.localIP} (${local.macAddress})`,
-      ip: local.localIP,
-      hostname: os.hostname()
-    });
-    this._panel.webview.postMessage({ command: 'updateTopology', topology: this.topology });
-  }
-
-  private startTraceroute(target: string) {
-    const cmd  = os.platform().startsWith('win') ? 'tracert' : 'traceroute';
-    const args = [target];
-    this.activeProcess = spawn(cmd, args);
-    let buf = '';
-  
-    this.activeProcess.stdout?.setEncoding('utf8');
-    this.activeProcess.stdout?.on('data', (chunk: string) => {
-      buf += chunk;
-  
-      const lines = buf.split(/\r?\n/);
-      buf = lines.pop() ?? '';
-  
-      for (const line of lines) {
-        const hop = this.parseTracerouteLine(line);
-        if (!hop) continue;
-  
-        const nodeId = `hop${hop.hop}`;
-        if (this.topology.nodes.find(n => n.id === nodeId)) continue;
-  
-        const label = hop.hostname && hop.hostname !== hop.ip
-          ? `${hop.hostname} (${hop.ip})${hop.rtt ? ' – ' + hop.rtt : ''}`
-          : `${hop.ip}${hop.rtt ? ' – ' + hop.rtt : ''}`;
-  
-        this.topology.nodes.push({
-          id: nodeId,
-          label,
-          ip: hop.ip,
-          hostname: hop.hostname
-        });
-  
-        const prev = hop.hop === 1 ? 'source' : `hop${hop.hop - 1}`;
-        this.topology.links.push({ source: prev, target: nodeId });
-  
-        this._panel.webview.postMessage({
-          command: 'updateTopology',
-          topology: this.topology
-        });
-      }
-    });
-  
-    this.activeProcess.stdout?.on('end', () => {
-      if (buf) {
-        const hop = this.parseTracerouteLine(buf);
-        if (hop) {
-          const nodeId = `hop${hop.hop}`;
-          if (!this.topology.nodes.find(n => n.id === nodeId)) {
-            const label = hop.hostname && hop.hostname !== hop.ip
-              ? `${hop.hostname} (${hop.ip})${hop.rtt ? ' – ' + hop.rtt : ''}`
-              : `${hop.ip}${hop.rtt ? ' – ' + hop.rtt : ''}`;
-  
-            this.topology.nodes.push({
-              id: nodeId,
-              label,
-              ip: hop.ip,
-              hostname: hop.hostname
-            });
-            const prev = hop.hop === 1 ? 'source' : `hop${hop.hop - 1}`;
-            this.topology.links.push({ source: prev, target: nodeId });
-          }
-        }
-      }
-    });
-  
-    this.activeProcess.on('close', () => {
-      if (!this.topology.nodes.find(n => n.id === 'dest')) {
-        this.topology.nodes.push({
-          id: 'dest',
-          label: target,
-          ip: target,
-          hostname: target
-        });
-        const last = this.topology.nodes[this.topology.nodes.length - 2].id;
-        this.topology.links.push({ source: last, target: 'dest' });
-        this._panel.webview.postMessage({ command: 'updateTopology', topology: this.topology });
-      }
-      this.activeProcess = undefined;
-      this._panel.webview.postMessage({ command: 'toggleStop', data: { show: false } });
-    });
-  }
-  
-
-  private stopTraceroute() {
-    this.activeProcess?.kill();
-    this.activeProcess = undefined;
-  }
-
-  private parseTracerouteLine (line: string): TracerouteHop | null {
-    line = line.trim();
-    if (
-         line.startsWith('Tracing route to') ||
-         line.startsWith('over a maximum')   ||
-         line === 'Trace complete.'
-       ) {
-      return null;
-    }
-  
-    if (/^\d+\s+\*\s+\*\s+\*/.test(line)) {
-      const hop = Number(line.split(/\s+/)[0]);
-      return { hop, ip: 'timeout', hostname: 'timeout' };
-    }
-  
-    // Linux
-    const unixRe = /^\s*(\d+)\s+(\S+)\s+\(([\d.]+)\)\s+([\d.]+)\s*ms/;
-    const mU = unixRe.exec(line);
-    if (mU) {
-      return {
-        hop:      +mU[1],
-        hostname: mU[2],
-        ip:       mU[3],
-        rtt:      `${mU[4]} ms`
-      };
-    }
-  
-    // Windows tracert adapt
-    const winRe = /^\s*(\d+)\s+(<\d+|\d+|\*)\s*ms\s+(<\d+|\d+|\*)\s*ms\s+(<\d+|\d+|\*)\s*ms\s+(.+?)(?:\s+\[([\d.]+)\])?\s*$/;
-    const mW = winRe.exec(line.replace(/\s+/g, ' '));
-    if (mW) {
-      const [ , hopStr, t1, t2, t3, hostPart, ipBracket ] = mW;
-      const rtt = `${t1} ms ${t2} ms ${t3} ms`.replace(/\* ms/g, '*');
-      const ip  = ipBracket ?? hostPart.trim();
-      const hostname = ipBracket ? hostPart.trim() : ip;
-      return { hop: +hopStr, hostname, ip, rtt };
-    }
-    return null;
-  }  
-
-  private generateCSV(): string {
-    let csv = 'NodeID,Label\n';
-    for (const n of this.topology.nodes) {
-      csv += `${n.id},${n.label}\n`;
-    }
-    return csv;
-  }
-
-  private async exportCSV(csv: string) {
-    if (!csv) {
-      vscode.window.showWarningMessage('No data to export.');
-      return;
-    }
-    const folders = vscode.workspace.workspaceFolders;
-    if (!folders?.length) {
-      vscode.window.showWarningMessage('Open a workspace first.');
-      return;
-    }
-    const root = folders[0].uri;
-    const folder = vscode.Uri.joinPath(root, 'net-commander', 'traceroute');
-    await vscode.workspace.fs.createDirectory(folder);
-    const now = new Date();
-    const fname = `traceroute-${now.getFullYear().toString().slice(-2)}${pad2(
-      now.getMonth() + 1
-    )}${pad2(now.getDate())}-${pad2(now.getHours())}${pad2(now.getMinutes())}.csv`;
-    const uri = vscode.Uri.joinPath(folder, fname);
-    await vscode.workspace.fs.writeFile(uri, Buffer.from(csv, 'utf8'));
-    vscode.window.showInformationMessage(`Exported to ${uri.fsPath}`);
-  }
-}
-
-function pad2(n: number) {
-  return n < 10 ? '0' + n : '' + n;
-}
-
-function getLocalNetworkInfo(): { localIP: string; macAddress: string } {
-  const nets = os.networkInterfaces();
-  let localIP = 'N/A';
-  let macAddress = 'N/A';
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name] || []) {
-      if (net.family === 'IPv4' && !net.internal) {
-        localIP = net.address;
-        macAddress = net.mac;
-        break;
-      }
-    }
-    if (localIP !== 'N/A') break;
-  }
-  return { localIP, macAddress };
 }

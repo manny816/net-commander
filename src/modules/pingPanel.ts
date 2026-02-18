@@ -38,7 +38,7 @@ interface PingRequest {
 }
 interface StopRequest { command: 'stop' }
 interface ClearRequest { command: 'clear' }
-interface ExportCsvRequest { command: 'exportCSV'; data: { csv: string } }
+interface ExportCsvRequest { command: 'exportCSV'; data: { csv: string; targets: string[] } }
 type IncomingMessage = PingRequest | StopRequest | ClearRequest | ExportCsvRequest;
 
 interface IndividualPingReply {
@@ -118,7 +118,8 @@ export class PingPanel {
           break;
         case 'exportCSV':
           exportCsv('ping', 'ping', message.data.csv,
-            'Seq,Bytes,TTL,Time,Target,Source,Source Mac,Timestamp\n'
+            'Seq,Bytes,TTL,Time,Target,Source,Source Mac,Timestamp\n',
+            message.data.targets
           );
           break;
       }

@@ -2,8 +2,12 @@
 Please see https://github.com/skhell/net-commander/releases for the latest release notes. The notes below have been kept for historical purposes.
 All notable changes to the "net-commander" extension will be documented in this file.
 
+## 2026-02-18 - [0.1.2]
+### Updated
+- traceroute module update to reflect ping module capability of executing single and multitarget trace
+- traceroute and ping modules now export separate csv one per target
 
-## 2025-11-03 - [0.1.1]
+## 2026-02-18 - [0.1.1]
 ### Updated
 - readme.md
 - references updated from my previous repository name to match my new one

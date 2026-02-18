@@ -73,14 +73,24 @@ export async function exportCsv(
   moduleName: string,
   baseFileName: string,
   csvContent: string,
-  csvHeader?: string
+  csvHeader?: string,
+  targets?: string[]
 ): Promise<void> {
   const folder = await ensureModuleFolder(moduleName);
   if (!folder) return;
 
   const now = new Date();
-  const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
-  const fullPath = join(folder, `${baseFileName}-${ts}.csv`);
+  const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  const time = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+
+  // Sanitize targets for filename (replace invalid chars)
+  let targetSuffix = '';
+  if (targets && targets.length > 0) {
+    const sanitized = targets.map(t => t.replace(/[^a-zA-Z0-9.-]/g, '_')).join('_');
+    targetSuffix = `-${sanitized}`;
+  }
+
+  const fullPath = join(folder, `${moduleName}-${date}-${time}${targetSuffix}.csv`);
 
   let content = csvHeader ?? '';
   try {

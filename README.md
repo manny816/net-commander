@@ -48,8 +48,7 @@ Aimed to be a powerful all-in-one toolkit for Network Engineers, DevOps Engineer
   - [RFC‑compliant CIDR calculator](#rfccompliant-cidr-calculator)
   - [Public IP lookup (ipinfo.io)](#public-ip-lookup-ipinfoio)
   - [PeeringDB lookup](#peeringdb-lookup)
-  - [Ping supercharged](#ping-supercharged)
-  - [Traceroute with SVG map](#traceroute-with-svg-map)
+  - [Ping and traceroute supercharged](#ping-and-traceroute-supercharged)
   - [Network configuration colorizer](#network-configuration-colorizer)
   - [Quick start](#quick-start)
   - [Configuration and settings](#configuration-and-settings)
@@ -108,17 +107,13 @@ Retrieve your external IP or gather details about any IP address with ipinfo.io 
 Query PeeringDB for ASN and facility data directly in VS Code. Enter an ASN or organization name to view peering policies, IX presence, and facility locations—ideal for planning interconnections and verifying existing peering information.
 
 
-## Ping supercharged
+## Ping and traceroute supercharged
 ![Ping Panel](https://raw.githubusercontent.com/skhell/net-commander/refs/heads/main/media/img/readme/ping.png)  
 - **Panel Mode:** Continuous ping monitoring in VS Code’s sidebar, with real‑time latency charts and packet‑loss stats.  
 - **Single‑Shot:** Quick terminal ping for instant reachability tests.  
 
-Both modes support CSV export (including source MAC & IP) and custom packet size/count via settings.
-
-
-## Traceroute with SVG map
-![Traceroute Map](https://raw.githubusercontent.com/skhell/net-commander/refs/heads/main/media/img/readme/traceroute.png)  
-Run a traceroute and generate an interactive SVG map of each hop, plotted geographically using IP geolocation. Inspect raw hop data alongside the map to troubleshoot routing or latency issues visually.
+Run a ping or traceroute against single or multiple targets.
+Both modes support detailed CSV export plus for Ping command you get a custom packet size/count via settings.
 
 
 ## Network configuration colorizer

@@ -3,7 +3,7 @@
  *   Author:      skhell                                                *
  *   Description: Net Commander is the extension for Visual Studio Code    *
  *                dedicated to Network Engineers, DevOps Engineers and     *
- *                Solution Architects streamlining everyday workflows and  * 
+ *                Solution Architects streamlining everyday workflows and  *
  *                accelerating data-driven root-cause analysis.            *
  *                                                                         *
  *   Github:      https://github.com/skhell/net-commander               *
@@ -19,150 +19,165 @@
 
 // media/module-traceroute/main.js
 
+// suppress ResizeObserver loop errors
 window.addEventListener('error', event => {
-  const msg = (event.message || '').toLowerCase();
-  if (msg.includes('resizeobserver loop completed')) {
+  if (
+    event.message &&
+    event.message.includes('ResizeObserver loop completed with undelivered notifications')
+  ) {
     event.preventDefault();
-    event.stopImmediatePropagation();
+    return false;
   }
 });
 
-const d3     = window.d3;
-const vscode = acquireVsCodeApi();
-const NODE_WIDTH = 20;
-const V_SPACING  = 80;
-const LABEL_GAP  = 15;
+document.addEventListener('DOMContentLoaded', () => {
+  const vscode = acquireVsCodeApi();
+  const targetsInput = document.getElementById('targets');
+  const traceBtn = document.getElementById('traceBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const resultsDiv = document.getElementById('results');
+  let resultsByTarget = {};
 
-function hexagonPath(width) {
-  const a = width / 2;
-  const r = a / Math.cos(Math.PI / 6);
-  let path = "";
-  for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 3) * i + Math.PI / 6;
-    const x = r * Math.cos(angle);
-    const y = r * Math.sin(angle);
-    path += (i === 0 ? "M" : "L") + x + "," + y;
-  }
-  return path + "Z";
-}
-
-// helper for timeout color
-function nodeColor(d) {
-    const ip   = (d.ip       || '').toString().toLowerCase();
-    const host = (d.hostname || '').toString().toLowerCase();
-    const isTimeout = ip === 'timeout' || host === 'timeout';
-    console.log(`node ${d.id}: ip="${d.ip}", hostname="${d.hostname}" → ${isTimeout? 'RED' : 'GREEN'}`);
-    return isTimeout ? 'red' : 'green';
+  if (!targetsInput || !traceBtn || !clearBtn || !exportBtn || !resultsDiv) {
+    console.error('Missing DOM elements in Traceroute UI');
+    return;
   }
 
-const svg       = d3.select(".middle svg")
-                    .attr("width",  "100%")
-                    .attr("height", "100%");
-const container = svg.append("g");
-
-const zoom = d3.zoom().on("zoom", e => {
-  container.attr("transform", e.transform);
-});
-svg.call(zoom);
-
-
-function renderTopology() {
-  container.selectAll("*").remove();
-
-  // compute center
-  const { width, height } = svg.node().getBoundingClientRect();
-  const cx = width  / 2;
-  const cy = height / 2;
-
-  topology.nodes.forEach((n, i) => {
-    n.x = cx;
-    n.y = cy - ((topology.nodes.length - 1) * V_SPACING) / 2 + i * V_SPACING;
+  traceBtn.addEventListener('click', () => {
+    const targets = targetsInput.value.split(/,|\n/)
+      .map(t => t.trim()).filter(t => t);
+    resultsByTarget = {};
+    renderClear();
+    vscode.postMessage({
+      command: 'traceroute',
+      data: { targets }
+    });
   });
 
-  // draw links
-  container.selectAll("line.link")
-    .data(topology.links)
-    .enter().append("line")
-      .attr("class", "link")
-      .attr("stroke", "#fff")
-      .attr("stroke-width", 1)
-      .attr("x1", d => findNode(d.source).x)
-      .attr("y1", d => findNode(d.source).y + NODE_WIDTH/2)
-      .attr("x2", d => findNode(d.target).x)
-      .attr("y2", d => findNode(d.target).y - NODE_WIDTH/2);
+  clearBtn.addEventListener('click', () => {
+    resultsByTarget = {};
+    renderClear();
+    vscode.postMessage({ command: 'clear' });
+  });
 
-  // draw hexagon + label
-  const nodes = container.selectAll("g.node")
-    .data(topology.nodes, d => d.id);
+  exportBtn.addEventListener('click', () => {
+    // I export one file per target
+    Object.values(resultsByTarget).forEach(group => {
+      let csv = '';
+      group.hops.forEach(r => {
+        csv += [
+          r.hop || '',
+          r.hostname,
+          r.ip,
+          r.rtt1,
+          r.rtt2,
+          r.rtt3,
+          r.status,
+          r.target,
+          r.localIP,
+          r.macAddress,
+          r.timestamp
+        ].join(',') + '\n';
+      });
+      const s = group.summary;
+      if (s) {
+        csv += `Summary:,Total=${s.totalHops},Success=${s.successHops},Timeout=${s.timeoutHops}\n`;
+      }
+      vscode.postMessage({ command: 'exportCSV', data: { csv, targets: [group.target] } });
+    });
+  });
 
-  const enter = nodes.enter().append("g")
-      .attr("class", "node")
-      .attr("transform", d => `translate(${d.x},${d.y})`)
-      .call(d3.drag()
-        .on("start", dragstarted)
-        .on("drag",  dragged)
-      );
+  window.addEventListener('message', ({ data }) => {
+    switch (data.command) {
+      case 'tracerouteResult':
+        handleTracerouteResult(data);
+        break;
+      case 'clearResults':
+        renderClear();
+        break;
+      case 'toggleStop':
+        break;
+    }
+  });
 
-  // hexagon
-  enter.append("path")
-    .attr("d", hexagonPath(NODE_WIDTH))
-    .attr("fill", d => nodeColor(d))
-
-  // text label
-  enter.append("text")
-    .attr("dy", NODE_WIDTH/2 + LABEL_GAP)
-    .attr("text-anchor", "middle")
-    .attr("fill", "#fff")
-    .text(d => d.label);
-}
-
-function findNode(id) {
-  return topology.nodes.find(n => n.id === id) || { x:0, y:0 };
-}
-
-function resetView() {
-  svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
-}
-
-// dragging (disable dragging of source/dest)
-function dragstarted(ev, d) {
-  if (d.id === "source" || d.id === "dest") return;
-  d3.select(this).raise();
-}
-function dragged(ev, d) {
-  if (d.id === "source" || d.id === "dest") return;
-  d.x = ev.x; d.y = ev.y;
-  d3.select(this).attr("transform", `translate(${d.x},${d.y})`);
-  
-  // I update links on the fly
-  container.selectAll("line.link")
-    .attr("x1", l => findNode(l.source).x)
-    .attr("y1", l => findNode(l.source).y + NODE_WIDTH/2)
-    .attr("x2", l => findNode(l.target).x)
-    .attr("y2", l => findNode(l.target).y - NODE_WIDTH/2);
-}
-
-document.getElementById("generateBtn").addEventListener("click", () => {
-  const tgt = document.getElementById("target").value.trim();
-  if (tgt) vscode.postMessage({ command:"traceroute", data:{ target:tgt } });
-});
-document.getElementById("resetViewBtn").addEventListener("click", resetView);
-document.getElementById("exportCSVBtn").addEventListener("click", () => {
-  vscode.postMessage({ command:"exportCSV" });
-});
-document.getElementById("clearBtn").addEventListener("click", () => {
-  vscode.postMessage({ command:"clear" });
-});
-
-let topology = { nodes:[], links:[] };
-window.addEventListener("message", e => {
-  const msg = e.data;
-  if (msg.command === "updateTopology") {
-    topology = msg.topology;
-    renderTopology();
+  function handleTracerouteResult({ data }) {
+    const { target, type } = data;
+    if (!resultsByTarget[target]) {
+      resultsByTarget[target] = { target, hops: [], summary: null };
+    }
+    if (type === 'hop') {
+      resultsByTarget[target].hops.push(data.row);
+    } else if (type === 'summary') {
+      resultsByTarget[target].summary = data.summary;
+    }
+    renderAll();
   }
-  else if (msg.command === "clearResults") {
-    container.selectAll("*").remove();
-    topology = { nodes:[], links:[] };
+
+  function renderClear() {
+    resultsDiv.innerHTML = '';
+    resultsByTarget = {};
+  }
+
+  function renderAll() {
+    resultsDiv.innerHTML = '';
+    for (const key in resultsByTarget) {
+      const group = resultsByTarget[key];
+      const title = document.createElement('h3');
+      title.textContent = `Traceroute: ${group.target}`;
+      resultsDiv.appendChild(title);
+
+      const table = document.createElement('vscode-table');
+      table.zebra = true;
+      table['bordered-rows'] = true;
+
+      const header = document.createElement('vscode-table-header');
+      header.slot = 'header';
+      ['Hop', 'Hostname', 'IP', 'RTT 1', 'RTT 2', 'RTT 3', 'Status', 'Timestamp']
+        .forEach(col => {
+          const th = document.createElement('vscode-table-header-cell');
+          th.textContent = col;
+          header.appendChild(th);
+        });
+      table.appendChild(header);
+
+      const body = document.createElement('vscode-table-body');
+      body.slot = 'body';
+      group.hops.forEach(row => {
+        const tr = document.createElement('vscode-table-row');
+        const isTimeout = row.status === 'timeout';
+
+        [row.hop, row.hostname, row.ip, row.rtt1, row.rtt2, row.rtt3, row.status, row.timestamp]
+          .forEach((val, idx) => {
+            const td = document.createElement('vscode-table-cell');
+            td.textContent = val;
+            // Color the status cell
+            if (idx === 6) {
+              td.style.color = isTimeout ? '#f14c4c' : '#4ec9b0';
+              td.style.fontWeight = 'bold';
+            }
+            // Color timeout rows
+            if (isTimeout && idx >= 1 && idx <= 5) {
+              td.style.color = '#f14c4c';
+            }
+            tr.appendChild(td);
+          });
+        body.appendChild(tr);
+      });
+
+      if (group.summary) {
+        const tr = document.createElement('vscode-table-row');
+        const td = document.createElement('vscode-table-cell');
+        td.colSpan = 8;
+        td.style.fontWeight = 'bold';
+        const s = group.summary;
+        td.textContent = `Total hops: ${s.totalHops} | Success: ${s.successHops} | Timeout: ${s.timeoutHops}`;
+        tr.appendChild(td);
+        body.appendChild(tr);
+      }
+
+      table.appendChild(body);
+      resultsDiv.appendChild(table);
+    }
   }
 });
