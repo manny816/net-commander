@@ -1,12 +1,12 @@
 /***************************************************************************
  *   Extension:   Net Commander                                            *
- *   Author:      skhell                                                *
+ *   Author:      skhell                                                   *
  *   Description: Net Commander is the extension for Visual Studio Code    *
  *                dedicated to Network Engineers, DevOps Engineers and     *
- *                Solution Architects streamlining everyday workflows and  * 
+ *                Solution Architects streamlining everyday workflows and  *
  *                accelerating data-driven root-cause analysis.            *
  *                                                                         *
- *   Github:      https://github.com/skhell/net-commander               *
+ *   Github:      https://github.com/skhell/net-commander                   *
  *                                                                         *
  *   Icon Author: skhell                                                   *
  *                                                                         *
@@ -17,7 +17,7 @@
  *   root for details.                                                     *
  **************************************************************************/
 
-/*  media/module-azurecidranalyzer/style.css */
+/*  media/module-gcpcidranalyzer/style.css */
 
 #status {
   margin-top: 0.75rem;
@@ -58,7 +58,7 @@
   margin-bottom: 0.75rem;
 }
 
-.subscription-options {
+.project-options {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -70,25 +70,25 @@
   overflow-y: auto;
 }
 
-.subscription-option {
+.project-option {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
 }
 
-.subscription-option input[type="checkbox"] {
+.project-option input[type="checkbox"] {
   margin: 0;
 }
 
-#subscriptions {
+#projects {
   margin-bottom: 1rem;
   border: 1px solid var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.35));
   border-radius: 6px;
   overflow: hidden;
 }
 
-.subscription-item {
+.project-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -96,7 +96,7 @@
   border-bottom: 1px solid var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.2));
 }
 
-.subscription-item:last-child {
+.project-item:last-child {
   border-bottom: none;
 }
 
@@ -132,12 +132,12 @@
   left: -1px;
 }
 
-.subscription-label {
+.project-label {
   flex-grow: 1;
   font-weight: 600;
 }
 
-.subscription-note {
+.project-note {
   color: var(--vscode-descriptionForeground);
   font-size: 0.85rem;
 }

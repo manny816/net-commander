@@ -7,10 +7,10 @@
  *                                                                         *
  *   Github:      https://github.com/skhell/net-commander               *
  *                                                                         *
- *   Icon Author: elelab                                                   *
+ *   Icon Author: skhell                                                   *
  *                                                                         *
- *   Copyright (C) 2025 elelab                                             *
- *   https://www.elelab.dev                                                *
+ *   Copyright (C) 2025 skhell                                             *
+ *   https://www.skhell.com                                                *
  *                                                                         *
  *   Licensed under the MIT License. See LICENSE file in the project       *
  *   root for details.                                                     *

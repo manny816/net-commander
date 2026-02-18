@@ -8,10 +8,10 @@
  *                                                                         *
  *   Github:      https://github.com/skhell/net-commander               *
  *                                                                         *
- *   Icon Author: elelab                                                   *
+ *   Icon Author: skhell                                                   *
  *                                                                         *
- *   Copyright (C) 2025 elelab                                             *
- *   https://www.elelab.dev                                                *
+ *   Copyright (C) 2025 skhell                                             *
+ *   https://www.skhell.com                                                *
  *                                                                         *
  *   Licensed under the MIT License. See LICENSE file in the project       *
  *   root for details.                                                     *
@@ -40,6 +40,8 @@ import { registerWiFiAnalyzer }       from './modules/wifiAnalyzer';
 import { TraceroutePanel }            from './modules/traceroute';
 import { PingPanel }                  from './modules/pingPanel';
 import { openAzureCidrAnalyzer }      from './modules/azureCidrAnalyzer';
+import { openAwsCidrAnalyzer }        from './modules/awsCidrAnalyzer';
+import { openGcpCidrAnalyzer }        from './modules/gcpCidrAnalyzer';
 import {
   activateNetworkColorizer,
   deactivateNetworkColorizer
@@ -65,6 +67,8 @@ const enum Command {
   PEERING_DB      = 'net-commander.peeringdb',
   EMERGENCY_CHECK = 'net-commander.rootcauseAnalysis',
   AZURE_CIDR      = 'net-commander.azureCidrAnalyzer',
+  AWS_CIDR        = 'net-commander.awsCidrAnalyzer',
+  GCP_CIDR        = 'net-commander.gcpCidrAnalyzer',
   OPEN_WELCOME    = 'netCommander.openWelcome'
 }
 
@@ -86,7 +90,9 @@ export function activate(context: vscode.ExtensionContext): void {
     [Command.IANA_PORT_CALC, () => openIanaPortCalculator(context)],
     [Command.PEERING_DB,      () => openPeeringDB(context)],
     [Command.EMERGENCY_CHECK,() => openRootcauseAnalysis(context)],
-    [Command.AZURE_CIDR,      () => openAzureCidrAnalyzer(context)]
+    [Command.AZURE_CIDR,      () => openAzureCidrAnalyzer(context)],
+    [Command.AWS_CIDR,        () => openAwsCidrAnalyzer(context)],
+    [Command.GCP_CIDR,        () => openGcpCidrAnalyzer(context)]
   ];
   for (const [id, fn] of cmds) {
     context.subscriptions.push(vscode.commands.registerCommand(id, fn));

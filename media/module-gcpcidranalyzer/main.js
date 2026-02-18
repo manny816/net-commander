@@ -1,12 +1,12 @@
 /***************************************************************************
  *   Extension:   Net Commander                                            *
- *   Author:      skhell                                                *
+ *   Author:      skhell                                                   *
  *   Description: Net Commander is the extension for Visual Studio Code    *
  *                dedicated to Network Engineers, DevOps Engineers and     *
- *                Solution Architects streamlining everyday workflows and  * 
+ *                Solution Architects streamlining everyday workflows and  *
  *                accelerating data-driven root-cause analysis.            *
  *                                                                         *
- *   Github:      https://github.com/skhell/net-commander               *
+ *   Github:      https://github.com/skhell/net-commander                   *
  *                                                                         *
  *   Icon Author: skhell                                                   *
  *                                                                         *
@@ -17,7 +17,7 @@
  *   root for details.                                                     *
  **************************************************************************/
 
-// media/module-azurecidranalyzer/main.js
+// media/module-gcpcidranalyzer/main.js
 
 // Suppress noisy ResizeObserver loop errors in the webview console
 window.addEventListener('error', (event) => {
@@ -31,17 +31,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const cidrInput = document.getElementById('cidrInput');
   const searchBtn = document.getElementById('searchBtn');
   const exportBtn = document.getElementById('exportBtn');
-  const subscriptionOptionsDiv = document.getElementById('subscriptionOptions');
-  const subscriptionsProgressDiv = document.getElementById('subscriptions');
+  const projectOptionsDiv = document.getElementById('projectOptions');
+  const projectsProgressDiv = document.getElementById('projects');
   const resultsDiv = document.getElementById('results');
   const statusEl = document.getElementById('status');
 
-  if (!cidrInput || !searchBtn || !exportBtn || !subscriptionOptionsDiv || !subscriptionsProgressDiv || !resultsDiv || !statusEl) {
-    console.error('Azure CIDR Analyzer: missing DOM elements');
+  if (!cidrInput || !searchBtn || !exportBtn || !projectOptionsDiv || !projectsProgressDiv || !resultsDiv || !statusEl) {
+    console.error('GCP CIDR Analyzer: missing DOM elements');
     return;
   }
 
-  const subscriptionState = {
+  const projectState = {
     options: [],
     selected: new Set()
   };
@@ -55,12 +55,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (value) {
       searchBtn.disabled = true;
       exportBtn.disabled = true;
-      setStatus('Searching Azure Resource Graph…', 'loading');
-    } else if (!statusEl.textContent) {
-      searchBtn.disabled = false;
-      setStatus('', '');
+      setStatus('Searching Google Cloud…', 'loading');
     } else {
       searchBtn.disabled = false;
+      if (!statusEl.textContent) {
+        setStatus('', '');
+      }
     }
   };
 
@@ -72,24 +72,24 @@ document.addEventListener('DOMContentLoaded', () => {
     resultsDiv.appendChild(p);
   };
 
-  const resetSubscriptionsView = () => {
-    subscriptionsProgressDiv.innerHTML = '';
+  const resetProjectsView = () => {
+    projectsProgressDiv.innerHTML = '';
   };
 
   const ensureAllCheckbox = () => {
-    const allCheckbox = subscriptionOptionsDiv.querySelector('input[data-id="__all__"]');
+    const allCheckbox = projectOptionsDiv.querySelector('input[data-id="__all__"]');
     if (!allCheckbox) return;
-    allCheckbox.checked = subscriptionState.selected.size === 0;
+    allCheckbox.checked = projectState.selected.size === 0;
   };
 
-  const renderSubscriptionOptions = (options) => {
-    subscriptionState.options = options;
-    subscriptionState.selected.clear();
-    subscriptionOptionsDiv.innerHTML = '';
+  const renderProjectOptions = (options) => {
+    projectState.options = options;
+    projectState.selected.clear();
+    projectOptionsDiv.innerHTML = '';
 
     const buildCheckbox = (labelText, value, checked = false, disabled = false) => {
       const wrapper = document.createElement('label');
-      wrapper.className = 'subscription-option';
+      wrapper.className = 'project-option';
 
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
@@ -104,70 +104,76 @@ document.addEventListener('DOMContentLoaded', () => {
       return { wrapper, checkbox };
     };
 
-    const allEntry = buildCheckbox('All subscriptions', '__all__', true, options.length === 0);
+    const allEntry = buildCheckbox('All projects', '__all__', true, options.length === 0);
     allEntry.checkbox.addEventListener('change', () => {
       if (allEntry.checkbox.checked) {
-        subscriptionState.selected.clear();
-        subscriptionOptionsDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        projectState.selected.clear();
+        projectOptionsDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
           if (cb.dataset.id && cb.dataset.id !== '__all__') {
             cb.checked = false;
           }
         });
-      } else if (subscriptionState.selected.size === 0) {
+      } else if (projectState.selected.size === 0) {
         allEntry.checkbox.checked = true;
       }
     });
-    subscriptionOptionsDiv.appendChild(allEntry.wrapper);
+    projectOptionsDiv.appendChild(allEntry.wrapper);
 
     options.forEach(option => {
-      const label = option.name ? `${option.name} (${option.id})` : option.id;
-      const { wrapper, checkbox } = buildCheckbox(label, option.id, false, false);
+      const id = option.id;
+      const label = option.name
+        ? `${option.name} (${id}${option.number ? ` · ${option.number}` : ''})`
+        : option.number
+          ? `${id} (${option.number})`
+          : id;
+      const { wrapper, checkbox } = buildCheckbox(label, id, false, false);
       checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
-          subscriptionState.selected.add(option.id);
+          projectState.selected.add(id);
           allEntry.checkbox.checked = false;
         } else {
-          subscriptionState.selected.delete(option.id);
-          if (subscriptionState.selected.size === 0) {
+          projectState.selected.delete(id);
+          if (projectState.selected.size === 0) {
             allEntry.checkbox.checked = true;
           }
         }
       });
-      subscriptionOptionsDiv.appendChild(wrapper);
+      projectOptionsDiv.appendChild(wrapper);
     });
 
     ensureAllCheckbox();
   };
 
-  const createSubscriptionProgressItem = (subscription) => {
+  const createProjectProgressItem = (project) => {
     const wrapper = document.createElement('div');
-    wrapper.className = 'subscription-item';
-    wrapper.dataset.id = subscription.id;
+    wrapper.className = 'project-item';
+    wrapper.dataset.id = project.id;
 
     const icon = document.createElement('span');
     icon.className = 'status-icon loading';
 
     const label = document.createElement('span');
-    label.className = 'subscription-label';
-    label.textContent = subscription.name
-      ? `${subscription.name} (${subscription.id})`
-      : subscription.id;
+    label.className = 'project-label';
+    const descriptor = project.name
+      ? `${project.name} (${project.id})`
+      : project.id;
+    label.textContent = project.number ? `${descriptor} · ${project.number}` : descriptor;
 
     const note = document.createElement('span');
-    note.className = 'subscription-note';
+    note.className = 'project-note';
     note.textContent = 'Pending…';
 
     wrapper.append(icon, label, note);
-    subscriptionsProgressDiv.appendChild(wrapper);
+    projectsProgressDiv.appendChild(wrapper);
   };
 
-  const updateSubscriptionStatus = (subscriptionId, status, detail) => {
-    const item = subscriptionsProgressDiv.querySelector(`[data-id="${subscriptionId}"]`);
+  const updateProjectStatus = (projectId, status, detail) => {
+    const item = projectsProgressDiv.querySelector(`[data-id="${projectId}"]`);
     if (!item) {
       return;
     }
     const icon = item.querySelector('.status-icon');
-    const note = item.querySelector('.subscription-note');
+    const note = item.querySelector('.project-note');
     icon.classList.remove('loading', 'success', 'error');
 
     switch (status) {
@@ -246,17 +252,17 @@ document.addEventListener('DOMContentLoaded', () => {
       cidrInput.focus();
       return;
     }
-    resetSubscriptionsView();
+    resetProjectsView();
     resultsDiv.innerHTML = '';
     exportBtn.disabled = true;
 
-    const selectedIds = Array.from(subscriptionState.selected);
+    const selectedIds = Array.from(projectState.selected);
     ensureAllCheckbox();
 
     vscode.postMessage({
       command: 'lookupCidr',
       cidr,
-      subscriptions: selectedIds.length ? selectedIds : undefined
+      projects: selectedIds.length ? selectedIds : undefined
     });
   });
 
@@ -264,8 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     vscode.postMessage({ command: 'exportCsv' });
   });
 
-  // Request subscription options on load
-  vscode.postMessage({ command: 'requestSubscriptions' });
+  vscode.postMessage({ command: 'requestProjects' });
 
   window.addEventListener('message', (event) => {
     const data = event.data;
@@ -277,17 +282,17 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'setLoading':
         setLoading(!!data.value);
         break;
-      case 'subscriptionOptions':
-        renderSubscriptionOptions(data.subscriptions || []);
+      case 'projectOptions':
+        renderProjectOptions(data.projects || []);
         break;
-      case 'initSubscriptions':
-        resetSubscriptionsView();
-        if (Array.isArray(data.subscriptions)) {
-          data.subscriptions.forEach(createSubscriptionProgressItem);
+      case 'initProjects':
+        resetProjectsView();
+        if (Array.isArray(data.projects)) {
+          data.projects.forEach(createProjectProgressItem);
         }
         break;
-      case 'subscriptionStatus':
-        updateSubscriptionStatus(data.subscriptionId, data.status, { count: data.count, message: data.message });
+      case 'projectStatus':
+        updateProjectStatus(data.projectId, data.status, { count: data.count, message: data.message });
         break;
       case 'displayResults':
         renderResults(data.results, data.cidrs, data.columns);

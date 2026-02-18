@@ -1,12 +1,12 @@
 /***************************************************************************
  *   Extension:   Net Commander                                            *
- *   Author:      skhell                                                *
+ *   Author:      skhell                                                   *
  *   Description: Net Commander is the extension for Visual Studio Code    *
  *                dedicated to Network Engineers, DevOps Engineers and     *
- *                Solution Architects streamlining everyday workflows and  * 
+ *                Solution Architects streamlining everyday workflows and  *
  *                accelerating data-driven root-cause analysis.            *
  *                                                                         *
- *   Github:      https://github.com/skhell/net-commander               *
+ *   Github:      https://github.com/skhell/net-commander                   *
  *                                                                         *
  *   Icon Author: skhell                                                   *
  *                                                                         *
@@ -17,7 +17,7 @@
  *   root for details.                                                     *
  **************************************************************************/
 
-// media/module-azurecidranalyzer/main.js
+// media/module-awscidranalyzer/main.js
 
 // Suppress noisy ResizeObserver loop errors in the webview console
 window.addEventListener('error', (event) => {
@@ -31,17 +31,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const cidrInput = document.getElementById('cidrInput');
   const searchBtn = document.getElementById('searchBtn');
   const exportBtn = document.getElementById('exportBtn');
-  const subscriptionOptionsDiv = document.getElementById('subscriptionOptions');
-  const subscriptionsProgressDiv = document.getElementById('subscriptions');
+  const regionOptionsDiv = document.getElementById('regionOptions');
+  const regionsProgressDiv = document.getElementById('regions');
   const resultsDiv = document.getElementById('results');
   const statusEl = document.getElementById('status');
 
-  if (!cidrInput || !searchBtn || !exportBtn || !subscriptionOptionsDiv || !subscriptionsProgressDiv || !resultsDiv || !statusEl) {
-    console.error('Azure CIDR Analyzer: missing DOM elements');
+  if (!cidrInput || !searchBtn || !exportBtn || !regionOptionsDiv || !regionsProgressDiv || !resultsDiv || !statusEl) {
+    console.error('AWS CIDR Analyzer: missing DOM elements');
     return;
   }
 
-  const subscriptionState = {
+  const regionState = {
     options: [],
     selected: new Set()
   };
@@ -55,12 +55,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (value) {
       searchBtn.disabled = true;
       exportBtn.disabled = true;
-      setStatus('Searching Azure Resource Graph…', 'loading');
-    } else if (!statusEl.textContent) {
-      searchBtn.disabled = false;
-      setStatus('', '');
+      setStatus('Searching AWS APIs…', 'loading');
     } else {
       searchBtn.disabled = false;
+      if (!statusEl.textContent) {
+        setStatus('', '');
+      }
     }
   };
 
@@ -72,24 +72,24 @@ document.addEventListener('DOMContentLoaded', () => {
     resultsDiv.appendChild(p);
   };
 
-  const resetSubscriptionsView = () => {
-    subscriptionsProgressDiv.innerHTML = '';
+  const resetRegionsView = () => {
+    regionsProgressDiv.innerHTML = '';
   };
 
   const ensureAllCheckbox = () => {
-    const allCheckbox = subscriptionOptionsDiv.querySelector('input[data-id="__all__"]');
+    const allCheckbox = regionOptionsDiv.querySelector('input[data-id="__all__"]');
     if (!allCheckbox) return;
-    allCheckbox.checked = subscriptionState.selected.size === 0;
+    allCheckbox.checked = regionState.selected.size === 0;
   };
 
-  const renderSubscriptionOptions = (options) => {
-    subscriptionState.options = options;
-    subscriptionState.selected.clear();
-    subscriptionOptionsDiv.innerHTML = '';
+  const renderRegionOptions = (options) => {
+    regionState.options = options;
+    regionState.selected.clear();
+    regionOptionsDiv.innerHTML = '';
 
     const buildCheckbox = (labelText, value, checked = false, disabled = false) => {
       const wrapper = document.createElement('label');
-      wrapper.className = 'subscription-option';
+      wrapper.className = 'region-option';
 
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
@@ -104,70 +104,72 @@ document.addEventListener('DOMContentLoaded', () => {
       return { wrapper, checkbox };
     };
 
-    const allEntry = buildCheckbox('All subscriptions', '__all__', true, options.length === 0);
+    const allEntry = buildCheckbox('All regions', '__all__', true, options.length === 0);
     allEntry.checkbox.addEventListener('change', () => {
       if (allEntry.checkbox.checked) {
-        subscriptionState.selected.clear();
-        subscriptionOptionsDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        regionState.selected.clear();
+        regionOptionsDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
           if (cb.dataset.id && cb.dataset.id !== '__all__') {
             cb.checked = false;
           }
         });
-      } else if (subscriptionState.selected.size === 0) {
+      } else if (regionState.selected.size === 0) {
         allEntry.checkbox.checked = true;
       }
     });
-    subscriptionOptionsDiv.appendChild(allEntry.wrapper);
+    regionOptionsDiv.appendChild(allEntry.wrapper);
 
     options.forEach(option => {
-      const label = option.name ? `${option.name} (${option.id})` : option.id;
-      const { wrapper, checkbox } = buildCheckbox(label, option.id, false, false);
+      const label = option.endpoint
+        ? `${option.name} (${option.endpoint})`
+        : option.name;
+      const { wrapper, checkbox } = buildCheckbox(label, option.name, false, false);
       checkbox.addEventListener('change', () => {
         if (checkbox.checked) {
-          subscriptionState.selected.add(option.id);
+          regionState.selected.add(option.name);
           allEntry.checkbox.checked = false;
         } else {
-          subscriptionState.selected.delete(option.id);
-          if (subscriptionState.selected.size === 0) {
+          regionState.selected.delete(option.name);
+          if (regionState.selected.size === 0) {
             allEntry.checkbox.checked = true;
           }
         }
       });
-      subscriptionOptionsDiv.appendChild(wrapper);
+      regionOptionsDiv.appendChild(wrapper);
     });
 
     ensureAllCheckbox();
   };
 
-  const createSubscriptionProgressItem = (subscription) => {
+  const createRegionProgressItem = (region) => {
     const wrapper = document.createElement('div');
-    wrapper.className = 'subscription-item';
-    wrapper.dataset.id = subscription.id;
+    wrapper.className = 'region-item';
+    wrapper.dataset.id = region.name;
 
     const icon = document.createElement('span');
     icon.className = 'status-icon loading';
 
     const label = document.createElement('span');
-    label.className = 'subscription-label';
-    label.textContent = subscription.name
-      ? `${subscription.name} (${subscription.id})`
-      : subscription.id;
+    label.className = 'region-label';
+    label.textContent = region.endpoint
+      ? `${region.name} (${region.endpoint})`
+      : region.name;
 
     const note = document.createElement('span');
-    note.className = 'subscription-note';
+    note.className = 'region-note';
     note.textContent = 'Pending…';
 
     wrapper.append(icon, label, note);
-    subscriptionsProgressDiv.appendChild(wrapper);
+    regionsProgressDiv.appendChild(wrapper);
   };
 
-  const updateSubscriptionStatus = (subscriptionId, status, detail) => {
-    const item = subscriptionsProgressDiv.querySelector(`[data-id="${subscriptionId}"]`);
+  const updateRegionStatus = (regionName, status, detail) => {
+    const item = regionsProgressDiv.querySelector(`[data-id="${regionName}"]`);
     if (!item) {
       return;
     }
     const icon = item.querySelector('.status-icon');
-    const note = item.querySelector('.subscription-note');
+    const note = item.querySelector('.region-note');
     icon.classList.remove('loading', 'success', 'error');
 
     switch (status) {
@@ -246,17 +248,17 @@ document.addEventListener('DOMContentLoaded', () => {
       cidrInput.focus();
       return;
     }
-    resetSubscriptionsView();
+    resetRegionsView();
     resultsDiv.innerHTML = '';
     exportBtn.disabled = true;
 
-    const selectedIds = Array.from(subscriptionState.selected);
+    const selectedNames = Array.from(regionState.selected);
     ensureAllCheckbox();
 
     vscode.postMessage({
       command: 'lookupCidr',
       cidr,
-      subscriptions: selectedIds.length ? selectedIds : undefined
+      regions: selectedNames.length ? selectedNames : undefined
     });
   });
 
@@ -264,8 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
     vscode.postMessage({ command: 'exportCsv' });
   });
 
-  // Request subscription options on load
-  vscode.postMessage({ command: 'requestSubscriptions' });
+  vscode.postMessage({ command: 'requestRegions' });
 
   window.addEventListener('message', (event) => {
     const data = event.data;
@@ -277,17 +278,17 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'setLoading':
         setLoading(!!data.value);
         break;
-      case 'subscriptionOptions':
-        renderSubscriptionOptions(data.subscriptions || []);
+      case 'regionOptions':
+        renderRegionOptions(data.regions || []);
         break;
-      case 'initSubscriptions':
-        resetSubscriptionsView();
-        if (Array.isArray(data.subscriptions)) {
-          data.subscriptions.forEach(createSubscriptionProgressItem);
+      case 'initRegions':
+        resetRegionsView();
+        if (Array.isArray(data.regions)) {
+          data.regions.forEach(createRegionProgressItem);
         }
         break;
-      case 'subscriptionStatus':
-        updateSubscriptionStatus(data.subscriptionId, data.status, { count: data.count, message: data.message });
+      case 'regionStatus':
+        updateRegionStatus(data.region, data.status, { count: data.count, message: data.message });
         break;
       case 'displayResults':
         renderResults(data.results, data.cidrs, data.columns);

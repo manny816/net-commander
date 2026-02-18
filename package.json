@@ -2,7 +2,7 @@
   "name": "net-commander",
   "displayName": "Net Commander ",
   "description": "Net Commander is the extension for Visual Studio Code dedicated to Network Engineers, DevOps Engineers and Solution Architects streamlining everyday workflows and accelerating data-driven root-cause analysis.",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "extensionKind": [
     "workspace",
     "ui"
@@ -51,6 +51,8 @@
     "onTerminalProfile:sshConnect.profile",
     "onLanguage:plaintext",
     "onCommand:net-commander.azureCidrAnalyzer",
+    "onCommand:net-commander.awsCidrAnalyzer",
+    "onCommand:net-commander.gcpCidrAnalyzer",
     "onCommand:netcmd.copyLastOutput",
     "onCommand:netcmd.saveLastOutput"
   ],
@@ -100,6 +102,14 @@
       {
         "command": "net-commander.azureCidrAnalyzer",
         "title": "NET Commander: Azure CIDR Analyzer"
+      },
+      {
+        "command": "net-commander.awsCidrAnalyzer",
+        "title": "NET Commander: AWS CIDR Analyzer"
+      },
+      {
+        "command": "net-commander.gcpCidrAnalyzer",
+        "title": "NET Commander: GCP CIDR Analyzer"
       },
       {
         "command": "netcmd.copyLastOutput",
@@ -166,6 +176,27 @@
           "description": "Bearer token with access to Azure Resource Graph (management.azure.com).",
           "markdownDescription": "Generate a token via Azure CLI: `az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv` and paste it here.",
           "scope": "machine"
+        },
+        "netCommander.awsAccessKeyId": {
+          "type": "string",
+          "default": "",
+          "description": "AWS access key ID used by the AWS CIDR Analyzer.",
+          "markdownDescription": "Create a user or role with least-privilege access (for example, `ec2:Describe*` permissions) and provide the Access Key ID here.",
+          "scope": "machine"
+        },
+        "netCommander.awsSecretAccessKey": {
+          "type": "string",
+          "default": "",
+          "description": "AWS secret access key paired with the configured access key ID.",
+          "markdownDescription": "Store the AWS secret access key associated with the access key ID. Rotate this credential regularly.",
+          "scope": "machine"
+        },
+        "netCommander.awsSessionToken": {
+          "type": "string",
+          "default": "",
+          "description": "Optional AWS session token for temporary credentials.",
+          "markdownDescription": "Populate when using temporary credentials such as those from AWS STS (`aws sts get-session-token`). Leave blank when using long-lived access keys.",
+          "scope": "machine"
         }
       }
     }
@@ -189,7 +220,9 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
+    "@aws-sdk/client-ec2": "^3.744.0",
     "@vscode-elements/elements": "^1.15.0",
+    "google-auth-library": "^9.14.1",
     "lit": "3.3.0",
     "markdown-it": "^14.1.0",
     "puppeteer": "^22.15.0",
