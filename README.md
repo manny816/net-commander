@@ -5,7 +5,7 @@
 # Network Engineering Toolkit for Visual Studio Code
 **Manage and diagnose networks end-to-end without ever leaving your code editor. Conduct real Root Cause Analysis data-driven with no more guessing**
 
-[![published](https://img.shields.io/badge/Cisco%20DevNet-published-blue)](https://developer.cisco.com/codeexchange/github/repo/skhell/net-commander)
+[![published](https://img.shields.io/badge/Cisco%20DevNet-published-blue)](https://developer.cisco.com/codeexchange/github/repo/akamura/net-commander)
 ![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/skhell.net-commander)
 ![Open VSX Version](https://img.shields.io/open-vsx/v/skhell/net-commander)
 [![Uses VSCode Elements](https://img.shields.io/badge/uses-vscode--elements-blue)](https://github.com/vscode-elements/elements/network/dependents)
