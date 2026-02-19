@@ -2,6 +2,14 @@
 Please see https://github.com/skhell/net-commander/releases for the latest release notes. The notes below have been kept for historical purposes.
 All notable changes to the "net-commander" extension will be documented in this file.
 
+## 2026-02-19 - [0.1.3]
+### Added
+- traceroute and ping modules run and auto-export CSV for convenience.
+- traceroute and ping modules stop action button.
+
+### Updated
+- traceroute and ping modules execute against CIDR targets.
+
 ## 2026-02-18 - [0.1.2]
 ### Updated
 - traceroute module update to reflect ping module capability of executing single and multitarget trace

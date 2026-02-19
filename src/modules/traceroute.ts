@@ -105,11 +105,14 @@ export class TraceroutePanel {
   private handleMessage(message: IncomingMessage) {
     try {
       switch (message.command) {
-        case 'traceroute':
+        case 'traceroute': {
           this.clearResults();
           this.toggleStop(true);
-          this.runTracerouteMultiple(message.data.targets);
+          const expanded = TraceroutePanel.expandTargets(message.data.targets);
+          this.panel.webview.postMessage({ command: 'tracerouteTotal', total: expanded.length });
+          this.runTracerouteMultiple(expanded);
           break;
+        }
         case 'stop':
           this.stopAll();
           this.toggleStop(false);
@@ -118,10 +121,7 @@ export class TraceroutePanel {
           this.clearResults();
           break;
         case 'exportCSV':
-          exportCsv('traceroute', 'traceroute', message.data.csv,
-            'Hop,Hostname,IP,RTT1,RTT2,RTT3,Status,Target,Source,Source Mac,Timestamp\n',
-            message.data.targets
-          );
+          exportCsv('traceroute', 'traceroute', message.data.csv, '', message.data.targets);
           break;
       }
     } catch (e) {
@@ -130,12 +130,19 @@ export class TraceroutePanel {
   }
 
   private runTracerouteMultiple(targets: string[]) {
-    for (const target of targets) {
-      this.runTraceroute(target);
+    const CONCURRENCY = 5;
+    let index = 0;
+    const next = () => {
+      if (index >= targets.length) return;
+      const target = targets[index++];
+      this.runTraceroute(target, next);
+    };
+    for (let i = 0; i < Math.min(CONCURRENCY, targets.length); i++) {
+      next();
     }
   }
 
-  private runTraceroute(target: string) {
+  private runTraceroute(target: string, onDone?: () => void) {
     const isWindows = os.platform().startsWith('win');
     const cmd = isWindows ? 'tracert' : 'traceroute';
     const args = [target];
@@ -182,6 +189,7 @@ export class TraceroutePanel {
       if (this.activeProcesses.length === 0) {
         this.toggleStop(false);
       }
+      onDone?.();
     });
 
     this.activeProcesses.push(child);
@@ -304,6 +312,35 @@ export class TraceroutePanel {
     return null;
   }
 
+  private static expandTargets(rawTargets: string[]): string[] {
+    const result: string[] = [];
+    for (const entry of rawTargets) {
+      const m = entry.match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/);
+      if (!m) { result.push(entry); continue; }
+      const prefix = parseInt(m[2], 10);
+      if (prefix < 0 || prefix > 32) { result.push(entry); continue; }
+      const parts = m[1].split('.').map(Number);
+      if (parts.some((p: number) => isNaN(p) || p < 0 || p > 255)) { result.push(entry); continue; }
+      const base = (((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0);
+      const mask = prefix === 0 ? 0 : ((~0 << (32 - prefix)) >>> 0);
+      const network = (base & mask) >>> 0;
+      const total = Math.pow(2, 32 - prefix);
+      const start = prefix < 31 ? 1 : 0;
+      const end   = prefix < 31 ? total - 1 : total;
+      const limit = Math.min(end, start + 256);
+      for (let i = start; i < limit; i++) {
+        const ip = (network + i) >>> 0;
+        result.push([
+          (ip >>> 24) & 0xff,
+          (ip >>> 16) & 0xff,
+          (ip >>> 8)  & 0xff,
+          ip          & 0xff
+        ].join('.'));
+      }
+    }
+    return result;
+  }
+
   private static getLocalNetworkInfo() {
     const nets = os.networkInterfaces();
     let localIP = 'N/A', macAddress = 'N/A';
@@ -360,11 +397,11 @@ export class TraceroutePanel {
 
     <div class="header flex-row section-padding">
       <vscode-form-container responsive="true">
-        <vscode-label for="targets">Targets (comma or newline)</vscode-label>
-        <vscode-textarea id="targets" placeholder="8.8.8.8&#10;1.1.1.1"></vscode-textarea>
+        <vscode-label for="targets">Targets (comma, newline or CIDR)</vscode-label>
+        <vscode-textarea id="targets" placeholder="1.1.1.1&#10;192.168.1.0/24"></vscode-textarea>
         <vscode-form-group>
-          <vscode-button id="traceBtn">Trace</vscode-button>
-          <vscode-button id="exportBtn">Export</vscode-button>
+          <vscode-button id="traceBtn">Trace &amp; Export</vscode-button>
+          <vscode-button id="stopBtn" style="display:none;--vscode-button-background:#c42b1c;--vscode-button-hoverBackground:#d13128;--vscode-button-foreground:#ffffff;">Stop</vscode-button>
           <vscode-button id="clearBtn" secondary>Clear</vscode-button>
         </vscode-form-group>
       </vscode-form-container>

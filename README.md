@@ -23,7 +23,7 @@ Aimed to be a powerful all-in-one toolkit for Network Engineers, DevOps Engineer
 
 | Category      | Highlights                                                                                                   |
 | ------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Troubleshoot** | • Live Ping panel & multiple-shot ping<br>• Visual Traceroute with mapped SVG path<br>• Assisted Root-Cause Analysis Report creation for data-driven resolution approach with no more guessing |
+| **Troubleshoot** | • Single or CIDR ping and traceroute<br>• Assisted Root-Cause Analysis Report creation for data-driven resolution approach with no more guessing |
 | **Wireless**     | • Wi-Fi Analyzer ideal for quick site survey<br>• One-click packet capture for deep inspection with Wireshark                      |
 | **Lookup**       | • IANA port registry search<br>• Public IP & ASN info (ipinfo.io)<br>• PeeringDB integration               |
 | **Calculate**    | • RFC-compliant CIDR calculator + *what-if* assisted subnet simulator                                               |
@@ -108,13 +108,12 @@ Query PeeringDB for ASN and facility data directly in VS Code. Enter an ASN or 
 
 
 ## Ping and traceroute supercharged
-![Ping Panel](https://raw.githubusercontent.com/skhell/net-commander/refs/heads/main/media/img/readme/ping.png)  
+![Ping Panel](https://raw.githubusercontent.com/skhell/net-commander/refs/heads/main/media/img/readme/ping-trace.jpg)  
 - **Panel Mode:** Continuous ping monitoring in VS Code’s sidebar, with real‑time latency charts and packet‑loss stats.  
 - **Single‑Shot:** Quick terminal ping for instant reachability tests.  
 
-Run a ping or traceroute against single or multiple targets.
-Both modes support detailed CSV export plus for Ping command you get a custom packet size/count via settings.
-
+Run a ping or traceroute against single or multiple targets including CIDR blocks.
+Both modes support auto-export of detailed CSV export plus Ping command allow you to edit a custom packet size/count via settings.
 
 ## Network configuration colorizer
 ![Config Colorizer](https://raw.githubusercontent.com/skhell/net-commander/refs/heads/main/media/img/readme/net-colorizer.gif)  

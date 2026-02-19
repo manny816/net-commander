@@ -19,82 +19,83 @@
 
 // media/module-traceroute/main.js
 
-// suppress ResizeObserver loop errors
 window.addEventListener('error', event => {
-  if (
-    event.message &&
-    event.message.includes('ResizeObserver loop completed with undelivered notifications')
-  ) {
+  if (event.message && event.message.includes('ResizeObserver loop completed with undelivered notifications')) {
     event.preventDefault();
     return false;
   }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-  const vscode = acquireVsCodeApi();
+  const vscode       = acquireVsCodeApi();
   const targetsInput = document.getElementById('targets');
-  const traceBtn = document.getElementById('traceBtn');
-  const clearBtn = document.getElementById('clearBtn');
-  const exportBtn = document.getElementById('exportBtn');
-  const resultsDiv = document.getElementById('results');
-  let resultsByTarget = {};
+  const traceBtn     = document.getElementById('traceBtn');
+  const stopBtn      = document.getElementById('stopBtn');
+  const clearBtn     = document.getElementById('clearBtn');
+  const resultsDiv   = document.getElementById('results');
 
-  if (!targetsInput || !traceBtn || !clearBtn || !exportBtn || !resultsDiv) {
+  let resultsByTarget  = {};
+  let totalTargets     = 0;
+  let completedTargets = 0;
+  let inputLabel       = '';
+  let running          = false;
+
+  if (!targetsInput || !traceBtn || !stopBtn || !clearBtn || !resultsDiv) {
     console.error('Missing DOM elements in Traceroute UI');
     return;
   }
 
   traceBtn.addEventListener('click', () => {
-    const targets = targetsInput.value.split(/,|\n/)
-      .map(t => t.trim()).filter(t => t);
-    resultsByTarget = {};
-    renderClear();
-    vscode.postMessage({
-      command: 'traceroute',
-      data: { targets }
-    });
+    const targets = targetsInput.value.split(/[,\n]/).map(t => t.trim()).filter(t => t);
+    if (targets.length === 0) return;
+    inputLabel       = targetsInput.value.trim();
+    resultsByTarget  = {};
+    totalTargets     = 0;
+    completedTargets = 0;
+    running          = true;
+    setRunning(true);
+    resultsDiv.innerHTML = '<div style="padding:12px;">Preparing targets\u2026</div>';
+    vscode.postMessage({ command: 'traceroute', data: { targets } });
+  });
+
+  stopBtn.addEventListener('click', () => {
+    running = false;
+    setRunning(false);
+    resultsDiv.innerHTML = '<div style="padding:12px;">Stopped.</div>';
+    vscode.postMessage({ command: 'stop' });
   });
 
   clearBtn.addEventListener('click', () => {
-    resultsByTarget = {};
-    renderClear();
+    running          = false;
+    resultsByTarget  = {};
+    totalTargets     = 0;
+    completedTargets = 0;
+    inputLabel       = '';
+    setRunning(false);
+    resultsDiv.innerHTML = '';
     vscode.postMessage({ command: 'clear' });
   });
 
-  exportBtn.addEventListener('click', () => {
-    // I export one file per target
-    Object.values(resultsByTarget).forEach(group => {
-      let csv = '';
-      group.hops.forEach(r => {
-        csv += [
-          r.hop || '',
-          r.hostname,
-          r.ip,
-          r.rtt1,
-          r.rtt2,
-          r.rtt3,
-          r.status,
-          r.target,
-          r.localIP,
-          r.macAddress,
-          r.timestamp
-        ].join(',') + '\n';
-      });
-      const s = group.summary;
-      if (s) {
-        csv += `Summary:,Total=${s.totalHops},Success=${s.successHops},Timeout=${s.timeoutHops}\n`;
-      }
-      vscode.postMessage({ command: 'exportCSV', data: { csv, targets: [group.target] } });
-    });
-  });
+  function setRunning(on) {
+    traceBtn.style.display = on ? 'none' : '';
+    stopBtn.style.display  = on ? '' : 'none';
+  }
 
   window.addEventListener('message', ({ data }) => {
     switch (data.command) {
+      case 'tracerouteTotal':
+        totalTargets     = data.total;
+        completedTargets = 0;
+        renderProgress(0, totalTargets);
+        break;
       case 'tracerouteResult':
         handleTracerouteResult(data);
         break;
       case 'clearResults':
-        renderClear();
+        resultsByTarget  = {};
+        totalTargets     = 0;
+        completedTargets = 0;
+        resultsDiv.innerHTML = '';
         break;
       case 'toggleStop':
         break;
@@ -102,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function handleTracerouteResult({ data }) {
+    if (!running) return;
     const { target, type } = data;
     if (!resultsByTarget[target]) {
       resultsByTarget[target] = { target, hops: [], summary: null };
@@ -110,74 +112,54 @@ document.addEventListener('DOMContentLoaded', () => {
       resultsByTarget[target].hops.push(data.row);
     } else if (type === 'summary') {
       resultsByTarget[target].summary = data.summary;
-    }
-    renderAll();
-  }
-
-  function renderClear() {
-    resultsDiv.innerHTML = '';
-    resultsByTarget = {};
-  }
-
-  function renderAll() {
-    resultsDiv.innerHTML = '';
-    for (const key in resultsByTarget) {
-      const group = resultsByTarget[key];
-      const title = document.createElement('h3');
-      title.textContent = `Traceroute: ${group.target}`;
-      resultsDiv.appendChild(title);
-
-      const table = document.createElement('vscode-table');
-      table.zebra = true;
-      table['bordered-rows'] = true;
-
-      const header = document.createElement('vscode-table-header');
-      header.slot = 'header';
-      ['Hop', 'Hostname', 'IP', 'RTT 1', 'RTT 2', 'RTT 3', 'Status', 'Timestamp']
-        .forEach(col => {
-          const th = document.createElement('vscode-table-header-cell');
-          th.textContent = col;
-          header.appendChild(th);
-        });
-      table.appendChild(header);
-
-      const body = document.createElement('vscode-table-body');
-      body.slot = 'body';
-      group.hops.forEach(row => {
-        const tr = document.createElement('vscode-table-row');
-        const isTimeout = row.status === 'timeout';
-
-        [row.hop, row.hostname, row.ip, row.rtt1, row.rtt2, row.rtt3, row.status, row.timestamp]
-          .forEach((val, idx) => {
-            const td = document.createElement('vscode-table-cell');
-            td.textContent = val;
-            // Color the status cell
-            if (idx === 6) {
-              td.style.color = isTimeout ? '#f14c4c' : '#4ec9b0';
-              td.style.fontWeight = 'bold';
-            }
-            // Color timeout rows
-            if (isTimeout && idx >= 1 && idx <= 5) {
-              td.style.color = '#f14c4c';
-            }
-            tr.appendChild(td);
-          });
-        body.appendChild(tr);
-      });
-
-      if (group.summary) {
-        const tr = document.createElement('vscode-table-row');
-        const td = document.createElement('vscode-table-cell');
-        td.colSpan = 8;
-        td.style.fontWeight = 'bold';
-        const s = group.summary;
-        td.textContent = `Total hops: ${s.totalHops} | Success: ${s.successHops} | Timeout: ${s.timeoutHops}`;
-        tr.appendChild(td);
-        body.appendChild(tr);
+      completedTargets++;
+      renderProgress(completedTargets, totalTargets);
+      if (totalTargets > 0 && completedTargets >= totalTargets) {
+        running = false;
+        setRunning(false);
+        autoExportAll();
       }
-
-      table.appendChild(body);
-      resultsDiv.appendChild(table);
     }
+  }
+
+  function renderProgress(done, total) {
+    const pct = total > 0 ? Math.round(done / total * 100) : 0;
+    resultsDiv.innerHTML = `<div style="padding:12px;">
+      <div>Tracing <strong>${total}</strong> host${total !== 1 ? 's' : ''}&hellip; <strong>${done} / ${total}</strong> completed (${pct}%)</div>
+      <div style="background:var(--vscode-editorWidget-border,#454545);height:6px;border-radius:3px;margin-top:10px;overflow:hidden;">
+        <div style="background:var(--vscode-progressBar-background,#0e70c0);height:100%;width:${pct}%;transition:width 0.15s;"></div>
+      </div>
+    </div>`;
+  }
+
+  function autoExportAll() {
+    let csv = 'Target,Hop,Hostname,IP,RTT 1,RTT 2,RTT 3,Status,Total Hops,Success Hops,Timeout Hops,Source,Source Mac,Timestamp\n';
+    Object.values(resultsByTarget).forEach(group => {
+      const s = group.summary;
+      if (group.hops.length > 0) {
+        group.hops.forEach((r, idx) => {
+          csv += [
+            group.target,
+            r.hop || '', r.hostname, r.ip, r.rtt1, r.rtt2, r.rtt3, r.status,
+            idx === 0 && s ? s.totalHops   : '',
+            idx === 0 && s ? s.successHops : '',
+            idx === 0 && s ? s.timeoutHops : '',
+            r.localIP, r.macAddress, r.timestamp
+          ].join(',') + '\n';
+        });
+      } else {
+        csv += [
+          group.target, '', '', '', '', '', '', '',
+          s ? s.totalHops   : '',
+          s ? s.successHops : '',
+          s ? s.timeoutHops : '',
+          '', '', ''
+        ].join(',') + '\n';
+      }
+    });
+    vscode.postMessage({ command: 'exportCSV', data: { csv, targets: [inputLabel] } });
+    resultsDiv.innerHTML = `<div style="padding:12px;">
+      <strong>${totalTargets} host${totalTargets !== 1 ? 's' : ''}</strong> traced. CSV exported automatically.
+    </div>`;
   }
 });

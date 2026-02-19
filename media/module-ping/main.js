@@ -3,7 +3,7 @@
  *   Author:      skhell                                                *
  *   Description: Net Commander is the extension for Visual Studio Code    *
  *                dedicated to Network Engineers, DevOps Engineers and     *
- *                Solution Architects streamlining everyday workflows and  * 
+ *                Solution Architects streamlining everyday workflows and  *
  *                accelerating data-driven root-cause analysis.            *
  *                                                                         *
  *   Github:      https://github.com/skhell/net-commander               *
@@ -19,156 +19,174 @@
 
 // media/module-ping/main.js
 
-// suppress ResizeObserver loop errors
 window.addEventListener('error', event => {
-    if (
-      event.message &&
-      event.message.includes('ResizeObserver loop completed with undelivered notifications')
-    ) {
+    if (event.message && event.message.includes('ResizeObserver loop completed with undelivered notifications')) {
       event.preventDefault();
       return false;
     }
   });
 
 document.addEventListener('DOMContentLoaded', () => {
-    const vscode = acquireVsCodeApi();
-    const targetsInput = document.getElementById('pingtargets');
-    const countInput   = document.getElementById('pingcount');
-    const sizeInput    = document.getElementById('pingsize');
-    const pingBtn      = document.getElementById('pingBtn');
-    const clearBtn     = document.getElementById('clearBtn');
-    const exportBtn    = document.getElementById('exportBtn');
-    const resultsDiv   = document.getElementById('results');
+    const vscode        = acquireVsCodeApi();
+    const targetsInput  = document.getElementById('pingtargets');
+    const countInput    = document.getElementById('pingcount');
+    const sizeInput     = document.getElementById('pingsize');
+    const pingBtn       = document.getElementById('pingBtn');
+    const stopBtn       = document.getElementById('stopBtn');
+    const clearBtn      = document.getElementById('clearBtn');
+    const resultsDiv    = document.getElementById('results');
+
     let resultsByTarget = {};
-  
-    if (!targetsInput || !countInput || !sizeInput || !pingBtn || !clearBtn || !exportBtn || !resultsDiv) {
+    let totalTargets    = 0;
+    let completedTargets = 0;
+    let inputLabel      = '';
+    let running         = false;
+
+    if (!targetsInput || !countInput || !sizeInput || !pingBtn || !stopBtn || !clearBtn || !resultsDiv) {
       console.error('Missing DOM elements in Ping UI');
       return;
     }
-  
+
     pingBtn.addEventListener('click', () => {
-      const targets = targetsInput.value.split(/,|\n/)
-        .map(t => t.trim()).filter(t => t);
-      resultsByTarget = {};
-      renderClear();
+      const targets = targetsInput.value.split(/[,\n]/).map(t => t.trim()).filter(t => t);
+      if (targets.length === 0) return;
+      inputLabel        = targetsInput.value.trim();
+      resultsByTarget   = {};
+      totalTargets      = 0;
+      completedTargets  = 0;
+      running           = true;
+      setRunning(true);
+      resultsDiv.innerHTML = '<div style="padding:12px;">Preparing targets\u2026</div>';
       vscode.postMessage({
         command: 'ping',
-        data: {
-          targets,
-          count: parseInt(countInput.value, 10) || 4,
-          size:  parseInt(sizeInput.value, 10)  || 56
-        }
+        data: { targets, count: parseInt(countInput.value, 10) || 4, size: parseInt(sizeInput.value, 10) || 56 }
       });
     });
-  
+
+    stopBtn.addEventListener('click', () => {
+      running = false;
+      setRunning(false);
+      resultsDiv.innerHTML = '<div style="padding:12px;">Stopped.</div>';
+      vscode.postMessage({ command: 'stop' });
+    });
+
     clearBtn.addEventListener('click', () => {
-      resultsByTarget = {};
-      renderClear();
+      running           = false;
+      resultsByTarget   = {};
+      totalTargets      = 0;
+      completedTargets  = 0;
+      inputLabel        = '';
+      setRunning(false);
+      resultsDiv.innerHTML = '';
       vscode.postMessage({ command: 'clear' });
     });
-  
-    exportBtn.addEventListener('click', () => {
-      // I export one file per target
-      Object.values(resultsByTarget).forEach(group => {
-        let csv = '';
-        group.replies.forEach(r => {
-          csv += [
-            r.seq || '',
-            r.bytes, r.ttl, r.time,
-            r.target, r.localIP, r.macAddress, r.timestamp
-          ].join(',') + '\n';
-        });
-        const s = group.summary;
-        if (s) {
-          csv += `Summary:,Sent=${s.transmitted},Rec=${s.received},Loss=${s.loss},Time=${s.totalTime},RTT=${s.rtt
-            ? `${s.rtt.min}/${s.rtt.avg}/${s.rtt.max}/${s.rtt.mdev}`
-            : 'N/A'}\n`;
-        }
-        vscode.postMessage({ command: 'exportCSV', data: { csv, targets: [group.target] } });
-      });
-    });
-  
+
+    function setRunning(on) {
+      pingBtn.style.display = on ? 'none' : '';
+      stopBtn.style.display = on ? '' : 'none';
+    }
+
     window.addEventListener('message', ({ data }) => {
       switch (data.command) {
+        case 'pingTotal':
+          totalTargets     = data.total;
+          completedTargets = 0;
+          renderProgress(0, totalTargets);
+          break;
         case 'pingResult':
           handlePingResult(data);
           break;
         case 'clearResults':
-          renderClear();
+          resultsByTarget  = {};
+          totalTargets     = 0;
+          completedTargets = 0;
+          resultsDiv.innerHTML = '';
           break;
         case 'toggleStop':
           break;
       }
     });
-  
+
     function handlePingResult({ data }) {
+      if (!running) return;
       const { target, type } = data;
       if (!resultsByTarget[target]) {
         resultsByTarget[target] = { target, replies: [], summary: null };
       }
       if (type === 'reply') {
-        resultsByTarget[target].replies.push(data.row);
+        const entry = resultsByTarget[target];
+        entry.replies.push(data.row);
+
+        // Compute cumulative running stats up to this reply
+        const replies  = entry.replies;
+        const received = replies.length;
+        const sent     = parseInt(data.row.seq, 10) || received;
+        const lossStr  = sent > 0 ? ((sent - received) / sent * 100).toFixed(1) + '%' : '0%';
+        const rtts     = replies.map(r => parseFloat(r.time)).filter(v => !isNaN(v));
+        data.row._running = {
+          sent,
+          received,
+          loss:   lossStr,
+          rttMin: rtts.length ? Math.min(...rtts).toFixed(3) + ' ms' : '',
+          rttAvg: rtts.length ? (rtts.reduce((a, b) => a + b, 0) / rtts.length).toFixed(3) + ' ms' : '',
+          rttMax: rtts.length ? Math.max(...rtts).toFixed(3) + ' ms' : ''
+        };
       } else if (type === 'summary') {
         resultsByTarget[target].summary = data.summary;
-      }
-      renderAll();
-    }
-  
-    function renderClear() {
-      resultsDiv.innerHTML = '';
-    }
-  
-    function renderAll() {
-      resultsDiv.innerHTML = '';
-      for (const key in resultsByTarget) {
-        const group = resultsByTarget[key];
-        const title = document.createElement('h3');
-        title.textContent = `Ping: ${group.target}`;
-        resultsDiv.appendChild(title);
-  
-        const table = document.createElement('vscode-table');
-        table.zebra = true;
-        table['bordered-rows'] = true;
-  
-        const header = document.createElement('vscode-table-header');
-        header.slot = 'header';
-        ['Seq','Bytes','TTL','Time','Target','Source','Source Mac','Timestamp']
-          .forEach(col => {
-            const th = document.createElement('vscode-table-header-cell');
-            th.textContent = col;
-            header.appendChild(th);
-          });
-        table.appendChild(header);
-  
-        const body = document.createElement('vscode-table-body');
-        body.slot = 'body';
-        group.replies.forEach(row => {
-          const tr = document.createElement('vscode-table-row');
-          [row.seq||'',row.bytes,row.ttl,row.time,row.target,row.localIP,row.macAddress,row.timestamp]
-            .forEach(val => {
-              const td = document.createElement('vscode-table-cell');
-              td.textContent = val;
-              tr.appendChild(td);
-            });
-          body.appendChild(tr);
-        });
-  
-        if (group.summary) {
-          const tr = document.createElement('vscode-table-row');
-          const td = document.createElement('vscode-table-cell');
-          td.colspan = 8;
-          td.style.fontWeight = 'bold';
-          const s = group.summary;
-          td.textContent = `Sent ${s.transmitted}, Rec ${s.received}, Loss ${s.loss}, Time ${s.totalTime}, RTT ${s.rtt
-            ? `${s.rtt.min}/${s.rtt.avg}/${s.rtt.max}/${s.rtt.mdev}`
-            : 'N/A'}`;
-          tr.appendChild(td);
-          body.appendChild(tr);
+        completedTargets++;
+        renderProgress(completedTargets, totalTargets);
+        if (totalTargets > 0 && completedTargets >= totalTargets) {
+          running = false;
+          setRunning(false);
+          autoExportAll();
         }
-  
-        table.appendChild(body);
-        resultsDiv.appendChild(table);
       }
+    }
+
+    function renderProgress(done, total) {
+      const pct = total > 0 ? Math.round(done / total * 100) : 0;
+      resultsDiv.innerHTML = `<div style="padding:12px;">
+        <div>Pinging <strong>${total}</strong> host${total !== 1 ? 's' : ''}&hellip; <strong>${done} / ${total}</strong> completed (${pct}%)</div>
+        <div style="background:var(--vscode-editorWidget-border,#454545);height:6px;border-radius:3px;margin-top:10px;overflow:hidden;">
+          <div style="background:var(--vscode-progressBar-background,#0e70c0);height:100%;width:${pct}%;transition:width 0.15s;"></div>
+        </div>
+      </div>`;
+    }
+
+    function autoExportAll() {
+      let csv = 'Target,Seq,Bytes,TTL,Time,Sent,Received,Loss,RTT Min,RTT Avg,RTT Max,Source,Source Mac,Timestamp\n';
+      Object.values(resultsByTarget).forEach(group => {
+        const s = group.summary;
+        if (group.replies.length > 0) {
+          group.replies.forEach((r) => {
+            const rs = r._running || {};
+            csv += [
+              group.target,
+              r.seq || '',
+              r.bytes, r.ttl, r.time,
+              rs.sent     !== undefined ? rs.sent     : '',
+              rs.received !== undefined ? rs.received : '',
+              rs.loss   || '',
+              rs.rttMin || '',
+              rs.rttAvg || '',
+              rs.rttMax || '',
+              r.localIP, r.macAddress, r.timestamp
+            ].join(',') + '\n';
+          });
+        } else {
+          // unreachable host — one row with summary stats so it appears in the CSV
+          csv += [
+            group.target, '', '', '', '',
+            s ? s.transmitted : '',
+            s ? s.received    : '',
+            s ? s.loss        : '',
+            '', '', '', '', '', ''
+          ].join(',') + '\n';
+        }
+      });
+      vscode.postMessage({ command: 'exportCSV', data: { csv, targets: [inputLabel] } });
+      resultsDiv.innerHTML = `<div style="padding:12px;">
+        <strong>${totalTargets} host${totalTargets !== 1 ? 's' : ''}</strong> completed. CSV exported automatically.
+      </div>`;
     }
   });
-  

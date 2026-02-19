@@ -100,15 +100,18 @@ export class PingPanel {
   private handleMessage(message: IncomingMessage) {
     try {
       switch (message.command) {
-        case 'ping':
+        case 'ping': {
           this.clearResults();
           this.toggleStop(true);
+          const expanded = PingPanel.expandTargets(message.data.targets);
+          this.panel.webview.postMessage({ command: 'pingTotal', total: expanded.length });
           this.runPingMultiple(
-            message.data.targets,
+            expanded,
             Number.isInteger(message.data.count) ? message.data.count : 4,
             Number.isInteger(message.data.size)  ? message.data.size  : 56
           );
           break;
+        }
         case 'stop':
           this.stopAll();
           this.toggleStop(false);
@@ -117,10 +120,7 @@ export class PingPanel {
           this.clearResults();
           break;
         case 'exportCSV':
-          exportCsv('ping', 'ping', message.data.csv,
-            'Seq,Bytes,TTL,Time,Target,Source,Source Mac,Timestamp\n',
-            message.data.targets
-          );
+          exportCsv('ping', 'ping', message.data.csv, '', message.data.targets);
           break;
       }
     } catch (e) {
@@ -129,12 +129,19 @@ export class PingPanel {
   }
 
   private runPingMultiple(targets: string[], count: number, size: number) {
-    for (const target of targets) {
-      this.runPing(target, count, size);
+    const CONCURRENCY = 20;
+    let index = 0;
+    const next = () => {
+      if (index >= targets.length) return;
+      const target = targets[index++];
+      this.runPing(target, count, size, next);
+    };
+    for (let i = 0; i < Math.min(CONCURRENCY, targets.length); i++) {
+      next();
     }
   }
 
-  private runPing(target: string, count: number, size: number) {
+  private runPing(target: string, count: number, size: number, onDone?: () => void) {
     const args = this.buildPingArgs(count, size, target);
     const { localIP, macAddress } = PingPanel.getLocalNetworkInfo();
 
@@ -159,6 +166,7 @@ export class PingPanel {
       if (this.activeProcesses.length === 0) {
         this.toggleStop(false);
       }
+      onDone?.();
     });
 
     child.stderr.on('data', err => console.error(`Ping error (${target}):`, err.toString()));
@@ -228,7 +236,7 @@ export class PingPanel {
   }
 
   private parsePingSummary(output: string): PingSummary | null {
-    const linux = /(\d+)\s+packets transmitted,\s+(\d+)\s+received,\s+([\d.]+)% packet loss.*time (\d+ms).*=\s+([\d.]+)\/([\d.]+)\/([\d.]+)\/([\d.]+) ms/;
+    const linux = /(\d+)\s+packets transmitted,\s+(\d+)\s+received,\s+([\d.]+)% packet loss.*time (\d+ms).*=\s+([\d.]+)\/([\d.]+)\/([\d.]+)\/([\d.]+) ms/s;
     const winP  = /Sent = (\d+), Received = (\d+), Lost = \d+ \((\d+)% loss\)/i;
     const winR  = /Minimum = (\d+)ms, Maximum = (\d+)ms, Average = (\d+)ms/i;
 
@@ -256,6 +264,35 @@ export class PingPanel {
       };
     }
     return null;
+  }
+
+  private static expandTargets(rawTargets: string[]): string[] {
+    const result: string[] = [];
+    for (const entry of rawTargets) {
+      const m = entry.match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/);
+      if (!m) { result.push(entry); continue; }
+      const prefix = parseInt(m[2], 10);
+      if (prefix < 0 || prefix > 32) { result.push(entry); continue; }
+      const parts = m[1].split('.').map(Number);
+      if (parts.some((p: number) => isNaN(p) || p < 0 || p > 255)) { result.push(entry); continue; }
+      const base = (((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0);
+      const mask = prefix === 0 ? 0 : ((~0 << (32 - prefix)) >>> 0);
+      const network = (base & mask) >>> 0;
+      const total = Math.pow(2, 32 - prefix);
+      const start = prefix < 31 ? 1 : 0;
+      const end   = prefix < 31 ? total - 1 : total;
+      const limit = Math.min(end, start + 256);
+      for (let i = start; i < limit; i++) {
+        const ip = (network + i) >>> 0;
+        result.push([
+          (ip >>> 24) & 0xff,
+          (ip >>> 16) & 0xff,
+          (ip >>> 8)  & 0xff,
+          ip          & 0xff
+        ].join('.'));
+      }
+    }
+    return result;
   }
 
   private static getLocalNetworkInfo() {
@@ -309,15 +346,15 @@ export class PingPanel {
 
     <div class="header flex-row section-padding">
       <vscode-form-container responsive="true">
-        <vscode-label for="pingtargets">Targets (comma or newline)</vscode-label>
-        <vscode-textarea id="pingtargets" placeholder="8.8.8.8&#10;1.1.1.1"></vscode-textarea>
+        <vscode-label for="pingtargets">Targets (comma, newline or CIDR)</vscode-label>
+        <vscode-textarea id="pingtargets" placeholder="1.1.1.1&#10;192.168.1.0/24"></vscode-textarea>
         <vscode-label for="pingcount">Count</vscode-label>
         <vscode-textfield id="pingcount" placeholder="4"></vscode-textfield>
         <vscode-label for="pingsize">Size</vscode-label>
         <vscode-textfield id="pingsize" placeholder="56"></vscode-textfield>
         <vscode-form-group>
-          <vscode-button id="pingBtn">Ping</vscode-button>
-          <vscode-button id="exportBtn">Export</vscode-button>
+          <vscode-button id="pingBtn">Ping &amp; Export</vscode-button>
+          <vscode-button id="stopBtn" style="display:none;--vscode-button-background:#c42b1c;--vscode-button-hoverBackground:#d13128;--vscode-button-foreground:#ffffff;">Stop</vscode-button>
           <vscode-button id="clearBtn" secondary>Clear</vscode-button>
         </vscode-form-group>
       </vscode-form-container>

@@ -86,8 +86,11 @@ export async function exportCsv(
   // Sanitize targets for filename (replace invalid chars)
   let targetSuffix = '';
   if (targets && targets.length > 0) {
-    const sanitized = targets.map(t => t.replace(/[^a-zA-Z0-9.-]/g, '_')).join('_');
-    targetSuffix = `-${sanitized}`;
+    const label = targets[0]
+      .replace(/\//g, '-')
+      .replace(/[^a-zA-Z0-9.\-]/g, '_')
+      .substring(0, 60);
+    targetSuffix = `-${label}`;
   }
 
   const fullPath = join(folder, `${moduleName}-${date}-${time}${targetSuffix}.csv`);
