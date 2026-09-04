@@ -82,7 +82,7 @@ function parseNeighborNetworks(output: string, otherStart: number): MacOSNeighbo
   if (otherStart < 0) return [];
 
   const tail = output.slice(otherStart + 'Other Local Wi-Fi Networks:'.length);
-  const awdlStart = tail.search(/^\s{8}awdl0:/m);
+  const awdlStart = tail.search(/^\s*awdl0:\s*$/m);
   const section = awdlStart >= 0 ? tail.slice(0, awdlStart) : tail;
   const lines = section.split(/\r?\n/);
   const neighbors: MacOSNeighborEvidence[] = [];
@@ -92,8 +92,11 @@ function parseNeighborNetworks(output: string, otherStart: number): MacOSNeighbo
 
   const flush = () => {
     if (!label || !body.length) return;
+
     const block = body.join('\n');
     const channelInfo = parseChannel(capture(block, /^\s*Channel:\s*(.+)$/im));
+
+    // A usable neighbor record must at minimum identify its RF channel.
     if (!Number.isFinite(channelInfo.channel)) {
       label = undefined;
       body = [];
@@ -124,13 +127,18 @@ function parseNeighborNetworks(output: string, otherStart: number): MacOSNeighbo
   };
 
   for (const line of lines) {
-    const header = line.match(/^\s{12}(.+):\s*$/);
+    // system_profiler indentation has changed between macOS releases. A network
+    // heading is simply an indented line ending in ':' with no value after it.
+    // Property lines (Channel:, Security:, PHY Mode:, etc.) all have values and
+    // therefore do not match this expression.
+    const header = line.match(/^\s+(.+):\s*$/);
     if (header) {
       flush();
       label = header[1].trim();
       body = [];
       continue;
     }
+
     if (label) body.push(line);
   }
   flush();
@@ -264,7 +272,7 @@ function getRfEvidence(): Partial<MacOSWiFiEvidence> {
 
 export async function gatherMacOSWiFiEvidence(): Promise<MacOSWiFiEvidence> {
   const adapter = await getWiFiInterface();
-  const [ipAddr, networksetupSsid, identity] = await Promise.all([
+  const [ipAddr, ssidFromNetworksetup, identity] = await Promise.all([
     getIPv4(adapter.iface),
     getSSID(adapter.iface),
     getWdutilIdentity(),
@@ -275,7 +283,7 @@ export async function gatherMacOSWiFiEvidence(): Promise<MacOSWiFiEvidence> {
     timestamp: new Date().toISOString(),
     ...adapter,
     ipAddr,
-    ssid: networksetupSsid || identity.ssid,
+    ssid: identity.ssid ?? ssidFromNetworksetup,
     bssid: identity.bssid,
     ...rf,
     linkQuality: rf.snrDb != null ? `SNR ${rf.snrDb} dB` : undefined,
