@@ -5,6 +5,19 @@ const exec = promisify(execCb);
 const RF_CACHE_MS = 5000;
 const RF_TIMEOUT_MS = 8000;
 
+export interface MacOSNeighborEvidence {
+  ssid: string;
+  bssid?: string;
+  channel: number;
+  strength: number;
+  signalDbm?: number;
+  noiseDbm?: number;
+  band?: string;
+  widthMHz?: number;
+  mode?: string;
+  security?: string;
+}
+
 export interface MacOSWiFiEvidence {
   iface?: string;
   mac?: string;
@@ -24,6 +37,9 @@ export interface MacOSWiFiEvidence {
   networkType?: string;
   linkQuality?: string;
   timestamp: string;
+  neighborDetails?: MacOSNeighborEvidence[];
+  neighborBars?: { channel: number; strength: number }[];
+  neighborSSIDs?: string[];
 }
 
 let cachedAt = 0;
@@ -57,6 +73,71 @@ function parseChannel(value?: string): { channel?: number; band?: string; widthM
   };
 }
 
+function dbmToPercent(rssi?: number): number {
+  if (!Number.isFinite(rssi)) return 0;
+  return Math.max(0, Math.min(100, Math.round((((rssi as number) + 100) / 70) * 100)));
+}
+
+function parseNeighborNetworks(output: string, otherStart: number): MacOSNeighborEvidence[] {
+  if (otherStart < 0) return [];
+
+  const tail = output.slice(otherStart + 'Other Local Wi-Fi Networks:'.length);
+  const awdlStart = tail.search(/^\s{8}awdl0:/m);
+  const section = awdlStart >= 0 ? tail.slice(0, awdlStart) : tail;
+  const lines = section.split(/\r?\n/);
+  const neighbors: MacOSNeighborEvidence[] = [];
+
+  let label: string | undefined;
+  let body: string[] = [];
+
+  const flush = () => {
+    if (!label || !body.length) return;
+    const block = body.join('\n');
+    const channelInfo = parseChannel(capture(block, /^\s*Channel:\s*(.+)$/im));
+    if (!Number.isFinite(channelInfo.channel)) {
+      label = undefined;
+      body = [];
+      return;
+    }
+
+    const signalNoise = block.match(/Signal \/ Noise:\s*(-?\d+) dBm \/ (-?\d+) dBm/i);
+    const signalDbm = signalNoise ? Number(signalNoise[1]) : undefined;
+    const noiseDbm = signalNoise ? Number(signalNoise[2]) : undefined;
+    const bssid = capture(block, /^\s*BSSID:\s*([0-9a-f:]{17})\s*$/im);
+    const safeLabel = label === '<redacted>' ? `Anonymous radio ${neighbors.length + 1}` : label;
+
+    neighbors.push({
+      ssid: safeLabel,
+      bssid,
+      channel: channelInfo.channel as number,
+      strength: dbmToPercent(signalDbm),
+      signalDbm,
+      noiseDbm,
+      band: channelInfo.band,
+      widthMHz: channelInfo.widthMHz,
+      mode: capture(block, /^\s*PHY Mode:\s*(.+)$/im),
+      security: capture(block, /^\s*Security:\s*(.+)$/im),
+    });
+
+    label = undefined;
+    body = [];
+  };
+
+  for (const line of lines) {
+    const header = line.match(/^\s{12}(.+):\s*$/);
+    if (header) {
+      flush();
+      label = header[1].trim();
+      body = [];
+      continue;
+    }
+    if (label) body.push(line);
+  }
+  flush();
+
+  return neighbors;
+}
+
 function parseSystemProfiler(output: string): Partial<MacOSWiFiEvidence> {
   const currentStart = output.indexOf('Current Network Information:');
   if (currentStart < 0) return {};
@@ -74,6 +155,13 @@ function parseSystemProfiler(output: string): Partial<MacOSWiFiEvidence> {
   const signalDbm = signalNoise ? Number(signalNoise[1]) : undefined;
   const noiseDbm = signalNoise ? Number(signalNoise[2]) : undefined;
   const snrDb = signalDbm != null && noiseDbm != null ? signalDbm - noiseDbm : undefined;
+  const neighborDetails = parseNeighborNetworks(output, otherStart);
+
+  const bestByChannel = new Map<number, number>();
+  for (const neighbor of neighborDetails) {
+    const previous = bestByChannel.get(neighbor.channel) ?? 0;
+    bestByChannel.set(neighbor.channel, Math.max(previous, neighbor.strength));
+  }
 
   return {
     mode,
@@ -85,6 +173,10 @@ function parseSystemProfiler(output: string): Partial<MacOSWiFiEvidence> {
     mcsIndex: Number.isFinite(mcs) ? mcs : undefined,
     security,
     networkType,
+    neighborDetails,
+    neighborBars: Array.from(bestByChannel, ([channel, strength]) => ({ channel, strength }))
+      .sort((a, b) => a.channel - b.channel),
+    neighborSSIDs: neighborDetails.map(n => n.ssid),
   };
 }
 
@@ -123,6 +215,24 @@ async function getSSID(iface?: string): Promise<string | undefined> {
   }
 }
 
+async function getWdutilIdentity(): Promise<{ ssid?: string; bssid?: string }> {
+  try {
+    const { stdout, stderr } = await exec('/usr/bin/wdutil info', {
+      timeout: 3000,
+      maxBuffer: 1024 * 1024,
+    });
+    const text = `${stdout}\n${stderr}`;
+    const ssid = capture(text, /^\s*SSID\s*:\s*(.+)$/im);
+    const bssid = capture(text, /^\s*BSSID\s*:\s*([0-9a-f:]{17})\s*$/im);
+    return {
+      ssid: ssid && ssid !== '<redacted>' ? ssid : undefined,
+      bssid,
+    };
+  } catch {
+    return {};
+  }
+}
+
 async function refreshRfEvidence(): Promise<void> {
   try {
     const { stdout } = await exec('/usr/sbin/system_profiler SPAirPortDataType', {
@@ -154,9 +264,10 @@ function getRfEvidence(): Partial<MacOSWiFiEvidence> {
 
 export async function gatherMacOSWiFiEvidence(): Promise<MacOSWiFiEvidence> {
   const adapter = await getWiFiInterface();
-  const [ipAddr, ssid] = await Promise.all([
+  const [ipAddr, networksetupSsid, identity] = await Promise.all([
     getIPv4(adapter.iface),
     getSSID(adapter.iface),
+    getWdutilIdentity(),
   ]);
   const rf = getRfEvidence();
 
@@ -164,7 +275,8 @@ export async function gatherMacOSWiFiEvidence(): Promise<MacOSWiFiEvidence> {
     timestamp: new Date().toISOString(),
     ...adapter,
     ipAddr,
-    ssid,
+    ssid: networksetupSsid || identity.ssid,
+    bssid: identity.bssid,
     ...rf,
     linkQuality: rf.snrDb != null ? `SNR ${rf.snrDb} dB` : undefined,
   };
