@@ -3,6 +3,7 @@ import { exec as execCb } from 'child_process';
 
 const exec = promisify(execCb);
 const RF_CACHE_MS = 5000;
+const RF_TIMEOUT_MS = 8000;
 
 export interface MacOSWiFiEvidence {
   iface?: string;
@@ -27,7 +28,7 @@ export interface MacOSWiFiEvidence {
 
 let cachedAt = 0;
 let cachedRf: Partial<MacOSWiFiEvidence> = {};
-let rfInFlight: Promise<Partial<MacOSWiFiEvidence>> | undefined;
+let rfInFlight: Promise<void> | undefined;
 
 function capture(output: string, re: RegExp): string | undefined {
   const match = output.match(re);
@@ -122,37 +123,42 @@ async function getSSID(iface?: string): Promise<string | undefined> {
   }
 }
 
-async function refreshRfEvidence(): Promise<Partial<MacOSWiFiEvidence>> {
+async function refreshRfEvidence(): Promise<void> {
   try {
-    const { stdout } = await exec('/usr/sbin/system_profiler SPAirPortDataType');
-    cachedRf = parseSystemProfiler(stdout);
-    cachedAt = Date.now();
-    return cachedRf;
+    const { stdout } = await exec('/usr/sbin/system_profiler SPAirPortDataType', {
+      timeout: RF_TIMEOUT_MS,
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    const parsed = parseSystemProfiler(stdout);
+    if (Object.keys(parsed).length) {
+      cachedRf = parsed;
+      cachedAt = Date.now();
+    }
   } catch {
-    return cachedRf;
+    // Keep last known good RF evidence. A slow/failed probe must not block the UI.
   } finally {
     rfInFlight = undefined;
   }
 }
 
-async function getRfEvidence(): Promise<Partial<MacOSWiFiEvidence>> {
+function getRfEvidence(): Partial<MacOSWiFiEvidence> {
   const now = Date.now();
-  if (now - cachedAt < RF_CACHE_MS && Object.keys(cachedRf).length) return cachedRf;
+  const stale = now - cachedAt >= RF_CACHE_MS || !Object.keys(cachedRf).length;
 
-  if (!rfInFlight) {
+  if (stale && !rfInFlight) {
     rfInFlight = refreshRfEvidence();
   }
 
-  return rfInFlight;
+  return cachedRf;
 }
 
 export async function gatherMacOSWiFiEvidence(): Promise<MacOSWiFiEvidence> {
   const adapter = await getWiFiInterface();
-  const [ipAddr, ssid, rf] = await Promise.all([
+  const [ipAddr, ssid] = await Promise.all([
     getIPv4(adapter.iface),
     getSSID(adapter.iface),
-    getRfEvidence(),
   ]);
+  const rf = getRfEvidence();
 
   return {
     timestamp: new Date().toISOString(),
