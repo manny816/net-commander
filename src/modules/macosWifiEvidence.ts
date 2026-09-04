@@ -27,6 +27,7 @@ export interface MacOSWiFiEvidence {
 
 let cachedAt = 0;
 let cachedRf: Partial<MacOSWiFiEvidence> = {};
+let rfInFlight: Promise<Partial<MacOSWiFiEvidence>> | undefined;
 
 function capture(output: string, re: RegExp): string | undefined {
   const match = output.match(re);
@@ -121,18 +122,28 @@ async function getSSID(iface?: string): Promise<string | undefined> {
   }
 }
 
+async function refreshRfEvidence(): Promise<Partial<MacOSWiFiEvidence>> {
+  try {
+    const { stdout } = await exec('/usr/sbin/system_profiler SPAirPortDataType');
+    cachedRf = parseSystemProfiler(stdout);
+    cachedAt = Date.now();
+    return cachedRf;
+  } catch {
+    return cachedRf;
+  } finally {
+    rfInFlight = undefined;
+  }
+}
+
 async function getRfEvidence(): Promise<Partial<MacOSWiFiEvidence>> {
   const now = Date.now();
   if (now - cachedAt < RF_CACHE_MS && Object.keys(cachedRf).length) return cachedRf;
 
-  try {
-    const { stdout } = await exec('/usr/sbin/system_profiler SPAirPortDataType');
-    cachedRf = parseSystemProfiler(stdout);
-    cachedAt = now;
-    return cachedRf;
-  } catch {
-    return cachedRf;
+  if (!rfInFlight) {
+    rfInFlight = refreshRfEvidence();
   }
+
+  return rfInFlight;
 }
 
 export async function gatherMacOSWiFiEvidence(): Promise<MacOSWiFiEvidence> {
