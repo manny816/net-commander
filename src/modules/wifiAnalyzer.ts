@@ -29,6 +29,7 @@ import { exec as execCb, spawn, ChildProcessWithoutNullStreams } from 'child_pro
 import { promises as fs } from 'fs'; 
 import { getNonce } from '../helpers/nonce';
 import { exportCsv, createCaptureFilePath } from '../helpers/exporter';
+import { gatherMacOSWiFiEvidence } from './macosWifiEvidence';
 
 
 // =========================================================================
@@ -317,15 +318,12 @@ async function gatherWiFiInfo(): Promise<WiFiInfo> {
       }
       
     }
-    
+
     else if (platform === 'darwin') {
-      const { stdout } = await exec(
-        '/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I'
-      );
-      info = parseDarwin(stdout);
-    
+      info = await gatherMacOSWiFiEvidence();
       await parseDarwinStats(info as WiFiInfo);
     } else {
+      
       const { stdout } = await exec('iwconfig');
       info = parseLinux(stdout);
     }
