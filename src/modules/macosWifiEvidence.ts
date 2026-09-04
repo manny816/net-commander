@@ -3,7 +3,7 @@ import { exec as execCb } from 'child_process';
 
 const exec = promisify(execCb);
 const RF_CACHE_MS = 5000;
-const RF_TIMEOUT_MS = 8000;
+const RF_TIMEOUT_MS = 20000;
 
 export interface MacOSNeighborEvidence {
   ssid: string;
@@ -40,11 +40,14 @@ export interface MacOSWiFiEvidence {
   neighborDetails?: MacOSNeighborEvidence[];
   neighborBars?: { channel: number; strength: number }[];
   neighborSSIDs?: string[];
+  rfProbeState?: 'fresh' | 'cached' | 'pending' | 'failed';
+  rfProbeAgeMs?: number;
 }
 
 let cachedAt = 0;
 let cachedRf: Partial<MacOSWiFiEvidence> = {};
 let rfInFlight: Promise<void> | undefined;
+let lastProbeFailed = false;
 
 function capture(output: string, re: RegExp): string | undefined {
   const match = output.match(re);
@@ -138,9 +141,6 @@ function parseNeighborNetworks(output: string, otherStart: number): MacOSNeighbo
       continue;
     }
 
-    // Newer macOS releases sometimes omit the SSID heading entirely and emit
-    // consecutive PHY/Channel/Security blocks directly beneath the section.
-    // A repeated PHY Mode marks the beginning of the next anonymous radio.
     if (/^\s*PHY Mode:\s*/i.test(line) && body.some(existing => /^\s*PHY Mode:\s*/i.test(existing))) {
       flush();
     }
@@ -263,9 +263,10 @@ async function refreshRfEvidence(): Promise<void> {
     if (Object.keys(parsed).length) {
       cachedRf = parsed;
       cachedAt = Date.now();
+      lastProbeFailed = false;
     }
   } catch {
-    // Keep last known good RF evidence. A slow/failed probe must not block the UI.
+    lastProbeFailed = true;
   } finally {
     rfInFlight = undefined;
   }
@@ -279,7 +280,19 @@ function getRfEvidence(): Partial<MacOSWiFiEvidence> {
     rfInFlight = refreshRfEvidence();
   }
 
-  return cachedRf;
+  const age = cachedAt ? now - cachedAt : undefined;
+  let rfProbeState: MacOSWiFiEvidence['rfProbeState'];
+  if (rfInFlight && !cachedAt) rfProbeState = 'pending';
+  else if (lastProbeFailed && !cachedAt) rfProbeState = 'failed';
+  else if (cachedAt && age != null && age < RF_CACHE_MS) rfProbeState = 'fresh';
+  else if (cachedAt) rfProbeState = 'cached';
+  else rfProbeState = 'pending';
+
+  return {
+    ...cachedRf,
+    rfProbeState,
+    rfProbeAgeMs: age,
+  };
 }
 
 export async function gatherMacOSWiFiEvidence(): Promise<MacOSWiFiEvidence> {
