@@ -1,54 +1,135 @@
 /***************************************************************************
  *   Extension:   Net Commander                                            *
- *   Author:      skhell                                                *
- *   Description: Net Commander is the extension for Visual Studio Code    *
- *                dedicated to Network Engineers, DevOps Engineers and     *
- *                Solution Architects streamlining everyday workflows and  * 
- *                accelerating data-driven root-cause analysis.            *
- *                                                                         *
- *   Github:      https://github.com/skhell/net-commander               *
- *                                                                         *
- *   Icon Author: skhell                                                   *
- *                                                                         *
- *   Copyright (C) 2025 skhell                                             *
- *   https://www.skhell.com                                                *
+ *   Author:      skhell                                                   *
+ *   Engineer dashboard customizations for manny816/net-commander          *
  *                                                                         *
  *   Licensed under the MIT License. See LICENSE file in the project       *
  *   root for details.                                                     *
- **************************************************************************/
+ ***************************************************************************/
 
-/*  media/module-wifianalyzer/style.css */
+/* media/module-wifianalyzer/style.css */
 
 .top-bar .controls {
     display: flex;
     gap: .5rem;
 }
 
-.top-bar vscode-button {
+.header {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.65rem;
+    padding: 0.65rem;
 }
 
-.header, .footer {
+.metric-card {
+    min-height: 170px;
+    padding: 0.85rem;
+    border: 1px solid var(--vscode-editorWidget-border);
+    background: var(--vscode-editor-background);
+    border-radius: 6px;
+}
+
+.metric-title {
+    margin-bottom: 0.7rem;
+    color: var(--vscode-descriptionForeground);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.primary-value {
+    min-height: 1.55rem;
+    margin-bottom: 0.7rem;
+    color: var(--vscode-editor-foreground);
+    font-size: 1.15rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.metric-row,
+.health-line {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: minmax(85px, .9fr) minmax(90px, 1.1fr);
     gap: 0.5rem;
-    padding: 0.5rem;
+    align-items: center;
+    min-height: 1.55rem;
+    border-top: 1px solid color-mix(in srgb, var(--vscode-editorWidget-border) 55%, transparent);
+    font-size: 0.84rem;
+}
+
+.metric-row span,
+.health-line > span:first-child {
+    color: var(--vscode-descriptionForeground);
+}
+
+.metric-row strong,
+.health-line strong {
+    color: var(--vscode-editor-foreground);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.health-line {
+    grid-template-columns: 55px 80px 1fr;
+}
+
+.health-badge {
+    justify-self: end;
+    padding: 0.15rem 0.4rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.health-badge.excellent,
+.health-badge.good {
+    color: var(--vscode-testing-iconPassed);
+}
+
+.health-badge.fair,
+.health-badge.marginal {
+    color: var(--vscode-editorWarning-foreground);
+}
+
+.health-badge.poor {
+    color: var(--vscode-testing-iconFailed);
+}
+
+.health-badge.unknown {
+    color: var(--vscode-descriptionForeground);
 }
 
 .middle {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-    gap: 0.5rem;
-    padding: 0.5rem;
-} 
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(360px, auto));
+    gap: 0.65rem;
+    padding: 0.65rem;
+}
 
 .chart-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: .25rem .5rem;
-    background: var(--header-bg);
-    color: var(--accent-fg);
+    align-items: flex-start;
+    gap: 1rem;
+    padding: .5rem .7rem;
+    background: var(--vscode-sideBar-background);
+    color: var(--vscode-sideBar-foreground);
+}
+
+.chart-header h2 {
+    margin: 0;
+}
+
+.panel-subtitle {
+    max-width: 760px;
+    margin-top: 0.2rem;
+    color: var(--vscode-descriptionForeground);
+    font-size: 0.76rem;
+    line-height: 1.35;
 }
 
 .static-legend {
@@ -73,37 +154,25 @@
 }
 
 .panel.chart {
-    height: 400px !important;
-    display: flex;
-    flex-direction: column;
-}
-
-.panel.chart > svg {
-    flex: 1 1 auto;
-    width: 100%;
-    height: auto;
-}
-
-.panel.chart > svg {
-    height: calc(100% - var(--chart-header-height, 0px));
-}
-
-.info-block {
-    height: 400px;
+    min-height: 360px !important;
     display: flex;
     flex-direction: column;
     border: 1px solid var(--vscode-editorWidget-border);
     background: var(--vscode-editor-background);
 }
 
-.info-block > h2 {
-    margin: 0;
-    padding: .25rem .5rem;
-    background: var(--vscode-sideBar-background);
-    color: var(--vscode-button-foreground);
-    font-size: .9rem;
-    text-align: center;
-    flex: 0 0 auto;
+.panel.chart > svg {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 285px;
+}
+
+.info-block {
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--vscode-editorWidget-border);
+    background: var(--vscode-editor-background);
 }
 
 .info-block .info-scrollable {
@@ -117,33 +186,56 @@
     box-sizing: border-box;
 }
 
+.reference-line {
+    opacity: 0.65;
+}
+
+.coming-data {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    min-height: 260px;
+    padding: 1.5rem;
+    color: var(--vscode-descriptionForeground);
+    text-align: center;
+    line-height: 1.45;
+}
+
 .footer {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: .5rem;
-    padding: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .65rem;
+    padding: 0.65rem;
     background: var(--vscode-editor-background);
 }
 
 .footer .section {
+    min-height: 300px;
     border: 1px solid var(--vscode-editorWidget-border);
     background: var(--vscode-editor-background);
     display: flex;
     flex-direction: column;
-    height: 400px;
-}
-
-.footer .section > h2 {
-    margin: 0;
-    padding: .25rem .5rem;
-    background: var(--vscode-sideBar-background);
-    color: var(--vscode-sideBar-foreground);
-    font-size: .9rem;
-    text-align: center;
-    flex: 0 0 auto;
 }
 
 .footer .section > svg {
     flex: 1 1 auto;
     width: 100%;
+}
+
+@media (max-width: 1100px) {
+    .header {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .middle,
+    .footer {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .header {
+        grid-template-columns: 1fr;
+    }
 }
