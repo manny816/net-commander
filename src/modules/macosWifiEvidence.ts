@@ -11,11 +11,16 @@ export interface MacOSWiFiEvidence {
   ssid?: string;
   bssid?: string;
   mode?: string;
+  band?: string;
   channel?: number;
   widthMHz?: number;
   signalDbm?: number;
   noiseDbm?: number;
+  snrDb?: number;
   txRateMbps?: number;
+  mcsIndex?: number;
+  security?: string;
+  networkType?: string;
   linkQuality?: string;
   timestamp: string;
 }
@@ -28,14 +33,26 @@ function capture(output: string, re: RegExp): string | undefined {
   return match?.[1]?.trim();
 }
 
-function parseChannel(value?: string): { channel?: number; widthMHz?: number } {
+function parseChannel(value?: string): { channel?: number; band?: string; widthMHz?: number } {
   if (!value) return {};
-  const match = value.match(/(\d+)\s*\([^,]+,\s*(\d+)MHz\)/i);
+
+  const match = value.match(/(\d+)\s*\(([^,]+),\s*(\d+)MHz\)/i);
   if (!match) {
     const channel = Number(value.match(/\d+/)?.[0]);
     return Number.isFinite(channel) ? { channel } : {};
   }
-  return { channel: Number(match[1]), widthMHz: Number(match[2]) };
+
+  const rawBand = match[2].trim();
+  const band = rawBand
+    .replace(/2GHz/i, '2.4 GHz')
+    .replace(/5GHz/i, '5 GHz')
+    .replace(/6GHz/i, '6 GHz');
+
+  return {
+    channel: Number(match[1]),
+    band,
+    widthMHz: Number(match[3]),
+  };
 }
 
 function parseSystemProfiler(output: string): Partial<MacOSWiFiEvidence> {
@@ -49,13 +66,23 @@ function parseSystemProfiler(output: string): Partial<MacOSWiFiEvidence> {
   const channelInfo = parseChannel(capture(current, /Channel:\s*(.+)/i));
   const mode = capture(current, /PHY Mode:\s*(.+)/i);
   const txRate = Number(capture(current, /Transmit Rate:\s*([\d.]+)/i));
+  const mcs = Number(capture(current, /MCS Index:\s*(\d+)/i));
+  const security = capture(current, /Security:\s*(.+)/i);
+  const networkType = capture(current, /Network Type:\s*(.+)/i);
+  const signalDbm = signalNoise ? Number(signalNoise[1]) : undefined;
+  const noiseDbm = signalNoise ? Number(signalNoise[2]) : undefined;
+  const snrDb = signalDbm != null && noiseDbm != null ? signalDbm - noiseDbm : undefined;
 
   return {
     mode,
     ...channelInfo,
-    signalDbm: signalNoise ? Number(signalNoise[1]) : undefined,
-    noiseDbm: signalNoise ? Number(signalNoise[2]) : undefined,
+    signalDbm,
+    noiseDbm,
+    snrDb,
     txRateMbps: Number.isFinite(txRate) ? txRate : undefined,
+    mcsIndex: Number.isFinite(mcs) ? mcs : undefined,
+    security,
+    networkType,
   };
 }
 
@@ -116,16 +143,12 @@ export async function gatherMacOSWiFiEvidence(): Promise<MacOSWiFiEvidence> {
     getRfEvidence(),
   ]);
 
-  const signalDbm = rf.signalDbm;
-  const noiseDbm = rf.noiseDbm;
-  const snr = signalDbm != null && noiseDbm != null ? signalDbm - noiseDbm : undefined;
-
   return {
     timestamp: new Date().toISOString(),
     ...adapter,
     ipAddr,
     ssid,
     ...rf,
-    linkQuality: snr != null ? `SNR ${snr} dB` : undefined,
+    linkQuality: rf.snrDb != null ? `SNR ${rf.snrDb} dB` : undefined,
   };
 }
