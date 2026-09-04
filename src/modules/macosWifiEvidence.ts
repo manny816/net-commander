@@ -91,12 +91,13 @@ function parseNeighborNetworks(output: string, otherStart: number): MacOSNeighbo
   let body: string[] = [];
 
   const flush = () => {
-    if (!label || !body.length) return;
+    if (!body.length) {
+      label = undefined;
+      return;
+    }
 
     const block = body.join('\n');
     const channelInfo = parseChannel(capture(block, /^\s*Channel:\s*(.+)$/im));
-
-    // A usable neighbor record must at minimum identify its RF channel.
     if (!Number.isFinite(channelInfo.channel)) {
       label = undefined;
       body = [];
@@ -107,7 +108,9 @@ function parseNeighborNetworks(output: string, otherStart: number): MacOSNeighbo
     const signalDbm = signalNoise ? Number(signalNoise[1]) : undefined;
     const noiseDbm = signalNoise ? Number(signalNoise[2]) : undefined;
     const bssid = capture(block, /^\s*BSSID:\s*([0-9a-f:]{17})\s*$/im);
-    const safeLabel = label === '<redacted>' ? `Anonymous radio ${neighbors.length + 1}` : label;
+    const safeLabel = !label || label === '<redacted>'
+      ? `Anonymous radio ${neighbors.length + 1}`
+      : label;
 
     neighbors.push({
       ssid: safeLabel,
@@ -127,10 +130,6 @@ function parseNeighborNetworks(output: string, otherStart: number): MacOSNeighbo
   };
 
   for (const line of lines) {
-    // system_profiler indentation has changed between macOS releases. A network
-    // heading is simply an indented line ending in ':' with no value after it.
-    // Property lines (Channel:, Security:, PHY Mode:, etc.) all have values and
-    // therefore do not match this expression.
     const header = line.match(/^\s+(.+):\s*$/);
     if (header) {
       flush();
@@ -139,7 +138,20 @@ function parseNeighborNetworks(output: string, otherStart: number): MacOSNeighbo
       continue;
     }
 
-    if (label) body.push(line);
+    // Newer macOS releases sometimes omit the SSID heading entirely and emit
+    // consecutive PHY/Channel/Security blocks directly beneath the section.
+    // A repeated PHY Mode marks the beginning of the next anonymous radio.
+    if (/^\s*PHY Mode:\s*/i.test(line) && body.some(existing => /^\s*PHY Mode:\s*/i.test(existing))) {
+      flush();
+    }
+
+    if (/^\s*PHY Mode:\s*/i.test(line) && !label) {
+      label = '<redacted>';
+    }
+
+    if (label || body.length) {
+      body.push(line);
+    }
   }
   flush();
 
