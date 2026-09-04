@@ -24,180 +24,42 @@
   "engines": {
     "vscode": "^1.99.0"
   },
-  "categories": [
-    "Other"
-  ],
-  "keywords": [
-    "networking",
-    "wifi analyzer",
-    "wifi site survey",
-    "root cause analysis",
-    "ipinfo",
-    "cidr calculator",
-    "ssh",
-    "terminal",
-    "cisco",
-    "arista",
-    "ciena",
-    "iana",
-    "peeringdb",
-    "traceroute",
-    "ping",
-    "colorizer"
-  ],
-  "activationEvents": [
-    "onStartupFinished",
-    "onCommand:sshConnect.connect",
-    "onTerminalProfile:sshConnect.profile",
-    "onLanguage:plaintext",
-    "onCommand:net-commander.azureCidrAnalyzer",
-    "onCommand:net-commander.awsCidrAnalyzer",
-    "onCommand:net-commander.gcpCidrAnalyzer",
-    "onCommand:netcmd.copyLastOutput",
-    "onCommand:netcmd.saveLastOutput"
-  ],
+  "categories": ["Other"],
+  "keywords": ["networking", "wifi analyzer", "wifi site survey", "root cause analysis", "ipinfo", "cidr calculator", "ssh", "terminal", "cisco", "arista", "ciena", "iana", "peeringdb", "traceroute", "ping", "colorizer"],
+  "activationEvents": ["onStartupFinished", "onCommand:sshConnect.connect", "onTerminalProfile:sshConnect.profile", "onLanguage:plaintext", "onCommand:net-commander.azureCidrAnalyzer", "onCommand:net-commander.awsCidrAnalyzer", "onCommand:net-commander.gcpCidrAnalyzer", "onCommand:netcmd.copyLastOutput", "onCommand:netcmd.saveLastOutput"],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "sshConnect.connect",
-        "title": "NET Commander: SSH Connect"
-      },
-      {
-        "command": "net-commander.cidrcalc",
-        "title": "NET Commander: CIDR Calculator"
-      },
-      {
-        "command": "net-commander.checkIpInfo",
-        "title": "NET Commander: Public IP lookup - ipinfo.io"
-      },
-      {
-        "command": "net-commander.checkMyIpInfo",
-        "title": "NET Commander: Get my Public IP - ipinfo.io"
-      },
-      {
-        "command": "net-commander.ping",
-        "title": "NET Commander: Ping"
-      },
-      {
-        "command": "net-commander.traceroute",
-        "title": "NET Commander: Traceroute"
-      },
-      {
-        "command": "net-commander.ianaportcalc",
-        "title": "NET Commander: IANA Port Calculator"
-      },
-      {
-        "command": "net-commander.peeringdb",
-        "title": "NET Commander: PeeringDB Lookup"
-      },
-      {
-        "command": "net-commander.wifiAnalyzer",
-        "title": "NET Commander: WiFi Analyzer"
-      },
-      {
-        "command": "net-commander.rootcauseAnalysis",
-        "title": "NET Commander: Root Cause Analysis"
-      },
-      {
-        "command": "net-commander.azureCidrAnalyzer",
-        "title": "NET Commander: Azure CIDR Analyzer"
-      },
-      {
-        "command": "net-commander.awsCidrAnalyzer",
-        "title": "NET Commander: AWS CIDR Analyzer"
-      },
-      {
-        "command": "net-commander.gcpCidrAnalyzer",
-        "title": "NET Commander: GCP CIDR Analyzer"
-      },
-      {
-        "command": "netcmd.copyLastOutput",
-        "title": "Copy Output",
-        "icon": "$(copy)"
-      },
-      {
-        "command": "netcmd.saveLastOutput",
-        "title": "Download Output",
-        "icon": "$(cloud-download)"
-      },
-      {
-        "command": "net-commander.selectWindowsAdapter",
-        "title": "NET Commander: Select Windows Network Adapter"
-      }
+      {"command":"sshConnect.connect","title":"NET Commander: SSH Connect"},
+      {"command":"net-commander.cidrcalc","title":"NET Commander: CIDR Calculator"},
+      {"command":"net-commander.checkIpInfo","title":"NET Commander: Public IP lookup - ipinfo.io"},
+      {"command":"net-commander.checkMyIpInfo","title":"NET Commander: Get my Public IP - ipinfo.io"},
+      {"command":"net-commander.ping","title":"NET Commander: Ping"},
+      {"command":"net-commander.traceroute","title":"NET Commander: Traceroute"},
+      {"command":"net-commander.ianaportcalc","title":"NET Commander: IANA Port Calculator"},
+      {"command":"net-commander.peeringdb","title":"NET Commander: PeeringDB Lookup"},
+      {"command":"net-commander.wifiAnalyzer","title":"NET Commander: WiFi Analyzer"},
+      {"command":"net-commander.rootcauseAnalysis","title":"NET Commander: Root Cause Analysis"},
+      {"command":"net-commander.azureCidrAnalyzer","title":"NET Commander: Azure CIDR Analyzer"},
+      {"command":"net-commander.awsCidrAnalyzer","title":"NET Commander: AWS CIDR Analyzer"},
+      {"command":"net-commander.gcpCidrAnalyzer","title":"NET Commander: GCP CIDR Analyzer"},
+      {"command":"netcmd.copyLastOutput","title":"Copy Output","icon":"$(copy)"},
+      {"command":"netcmd.saveLastOutput","title":"Download Output","icon":"$(cloud-download)"},
+      {"command":"net-commander.selectWindowsAdapter","title":"NET Commander: Select Windows Network Adapter"}
     ],
-    "menus": {
-      "view/title": [
-        {
-          "command": "netcmd.copyLastOutput",
-          "when": "view == terminal",
-          "group": "navigation"
-        },
-        {
-          "command": "netcmd.saveLastOutput",
-          "when": "view == terminal",
-          "group": "navigation"
-        }
-      ]
-    },
-    "terminal": {
-      "profiles": [
-        {
-          "id": "sshConnect.profile",
-          "title": "SSH: Select Host",
-          "icon": "remote"
-        }
-      ]
-    },
+    "menus": {"view/title":[{"command":"netcmd.copyLastOutput","when":"view == terminal","group":"navigation"},{"command":"netcmd.saveLastOutput","when":"view == terminal","group":"navigation"}]},
+    "terminal": {"profiles":[{"id":"sshConnect.profile","title":"SSH: Select Host","icon":"remote"}]},
     "configuration": {
-      "type": "object",
-      "title": "NET Commander",
+      "type":"object",
+      "title":"NET Commander",
       "properties": {
-        "netCommander.ipinfoApiKey": {
-          "type": "string",
-          "default": "",
-          "description": "Open a Free account at ipinfo.io website and get your free API key from your dashboard API Token and paste it here."
-        },
-        "netCommander.ianaCsvUrl": {
-          "type": "string",
-          "default": "https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv",
-          "description": "This is the precompiled URL for IANA port assignments. Verify the URL at the IANA site and replace here if they update it https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml"
-        },
-        "netCommander.windowsAdapterName": {
-          "type": "string",
-          "default": "",
-          "description": "Selected Windows network adapter for traffic monitoring (RX/TX)",
-          "markdownDescription": "Run the command 'NET Commander: Select Windows Network Adapter' to populate this.",
-          "scope": "machine"
-        },
-        "netCommander.azureGraphToken": {
-          "type": "string",
-          "default": "",
-          "description": "Bearer token with access to Azure Resource Graph (management.azure.com).",
-          "markdownDescription": "Generate a token via Azure CLI: `az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv` and paste it here.",
-          "scope": "machine"
-        },
-        "netCommander.awsAccessKeyId": {
-          "type": "string",
-          "default": "",
-          "description": "AWS access key ID used by the AWS CIDR Analyzer.",
-          "markdownDescription": "Create a user or role with least-privilege access (for example, `ec2:Describe*` permissions) and provide the Access Key ID here.",
-          "scope": "machine"
-        },
-        "netCommander.awsSecretAccessKey": {
-          "type": "string",
-          "default": "",
-          "description": "AWS secret access key paired with the configured access key ID.",
-          "markdownDescription": "Store the AWS secret access key associated with the access key ID. Rotate this credential regularly.",
-          "scope": "machine"
-        },
-        "netCommander.awsSessionToken": {
-          "type": "string",
-          "default": "",
-          "description": "Optional AWS session token for temporary credentials.",
-          "markdownDescription": "Populate when using temporary credentials such as those from AWS STS (`aws sts get-session-token`). Leave blank when using long-lived access keys.",
-          "scope": "machine"
-        }
+        "netCommander.ipinfoApiKey":{"type":"string","default":"","description":"Open a Free account at ipinfo.io website and get your free API key from your dashboard API Token and paste it here."},
+        "netCommander.ianaCsvUrl":{"type":"string","default":"https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv","description":"This is the precompiled URL for IANA port assignments. Verify the URL at the IANA site and replace here if they update it https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml"},
+        "netCommander.windowsAdapterName":{"type":"string","default":"","description":"Selected Windows network adapter for traffic monitoring (RX/TX)","markdownDescription":"Run the command 'NET Commander: Select Windows Network Adapter' to populate this.","scope":"machine"},
+        "netCommander.azureGraphToken":{"type":"string","default":"","description":"Bearer token with access to Azure Resource Graph (management.azure.com).","markdownDescription":"Generate a token via Azure CLI: `az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv` and paste it here.","scope":"machine"},
+        "netCommander.awsAccessKeyId":{"type":"string","default":"","description":"AWS access key ID used by the AWS CIDR Analyzer.","markdownDescription":"Create a user or role with least-privilege access (for example, `ec2:Describe*` permissions) and provide the Access Key ID here.","scope":"machine"},
+        "netCommander.awsSecretAccessKey":{"type":"string","default":"","description":"AWS secret access key paired with the configured access key ID.","markdownDescription":"Store the AWS secret access key associated with the access key ID. Rotate this credential regularly.","scope":"machine"},
+        "netCommander.awsSessionToken":{"type":"string","default":"","description":"Optional AWS session token for temporary credentials.","markdownDescription":"Populate when using temporary credentials such as those from AWS STS (`aws sts get-session-token`). Leave blank when using long-lived access keys.","scope":"machine"}
       }
     }
   },
@@ -209,7 +71,9 @@
     "watch": "tsc -watch -p ./",
     "lint": "eslint src",
     "test": "vscode-test",
-    "package": "npm run rebuild && vsce package"
+    "package": "npm run rebuild && vsce package",
+    "dev:stop": "pkill -f 'extensionHost' 2>/dev/null || true",
+    "dev:restart": "npm run compile && npm run dev:stop"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
