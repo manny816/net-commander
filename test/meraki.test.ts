@@ -6,6 +6,7 @@ import {
   MerakiClient,
   MerakiEvidenceService,
   MerakiConfigurationError,
+  validateMerakiConnection,
 } from '../src/integrations/meraki';
 
 interface Call {
@@ -181,6 +182,98 @@ describe('MerakiClient', () => {
       fetchFn: async () => response('{not-json'),
     });
     await assert.rejects(client.get('/organizations'), (error: MerakiApiError) => error.status === 200);
+  });
+});
+
+describe('Meraki connection validation', () => {
+  it('validates one read-only organizations request and normalizes names', async () => {
+    const provider = new FakeSecretProvider();
+    await provider.setSecret('jcg.meraki.apiKey', 'validation-secret');
+    const requests: Array<{ url: string; method?: string }> = [];
+
+    const result = await validateMerakiConnection(provider, secrets => new MerakiClient({
+      apiKey: secrets,
+      fetchFn: async (url, init) => {
+        requests.push({ url, method: init?.method });
+        if (url.endsWith('/organizations')) {
+          return response([
+            { id: 'org-1', name: 'JCG Solutions' },
+            { id: 'org-lvmh', name: 'LVMH BeautyTech AMER' },
+          ], 200, { 'x-request-id': 'validation-request-1' });
+        }
+        if (url.endsWith('/organizations/org-lvmh/networks')) {
+          return response(
+            [{ id: 'network-1', name: 'Beauty Lab' }],
+            200,
+            {
+              'x-request-id': 'validation-network-1',
+              link: '<https://api.meraki.com/api/v1/organizations/org-lvmh/networks?page=2>; rel="next"',
+            },
+          );
+        }
+        if (url.endsWith('/organizations/org-lvmh/networks?page=2')) {
+          return response([{ id: 'network-2', name: 'Beauty Store' }], 200, { 'x-request-id': 'validation-network-2' });
+        }
+        if (url.endsWith('/organizations/org-lvmh/devices')) {
+          return response([
+            { serial: 'device-1', productType: 'wireless' },
+            { serial: 'device-2', productType: 'switch' },
+            { serial: 'device-3', productType: 'wireless' },
+          ], 200, { 'x-request-id': 'validation-device-1' });
+        }
+        throw new Error(`Unexpected validation URL: ${url}`);
+      },
+    }));
+
+    assert.strictEqual(result.ok, true);
+    assert.deepStrictEqual(result.organizations, ['JCG Solutions', 'LVMH BeautyTech AMER']);
+    assert.strictEqual(result.evidenceNormalization, 'PASS');
+    assert.strictEqual(result.credentialExposure, 'PASS');
+    assert.strictEqual(result.requestId, 'validation-request-1');
+    assert.deepStrictEqual(result.gate2, {
+      organizationName: 'LVMH BeautyTech AMER',
+      networkCount: 2,
+      deviceCount: 3,
+      devicesByProductType: { wireless: 2, switch: 1 },
+      evidenceNormalization: 'PASS',
+      pagination: 'PASS',
+      cacheSummary: 'Organizations: BYPASSED; Networks: MISS; Devices: MISS',
+      accessMode: 'READ ONLY',
+    });
+    assert.deepStrictEqual(requests, [
+      { url: 'https://api.meraki.com/api/v1/organizations', method: 'GET' },
+      { url: 'https://api.meraki.com/api/v1/organizations/org-lvmh/networks', method: 'GET' },
+      { url: 'https://api.meraki.com/api/v1/organizations/org-lvmh/networks?page=2', method: 'GET' },
+      { url: 'https://api.meraki.com/api/v1/organizations/org-lvmh/devices', method: 'GET' },
+    ]);
+    assert.ok(!JSON.stringify(result).includes('validation-secret'));
+  });
+
+  it('stops without an API request when Meraki is not configured', async () => {
+    const provider = new FakeSecretProvider();
+    let called = false;
+    const result = await validateMerakiConnection(provider, () => {
+      called = true;
+      return new MerakiClient({ apiKey: 'unused' });
+    });
+
+    assert.strictEqual(result.message, 'Meraki is not configured.');
+    assert.strictEqual(result.apiReachability, 'NOT RUN');
+    assert.strictEqual(called, false);
+  });
+
+  it('sanitizes authentication failures', async () => {
+    const provider = new FakeSecretProvider();
+    await provider.setSecret('jcg.meraki.apiKey', 'validation-secret');
+    const result = await validateMerakiConnection(provider, secrets => new MerakiClient({
+      apiKey: secrets,
+      maxRetries: 0,
+      fetchFn: async () => response({ error: 'unauthorized' }, 401),
+    }));
+
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.message, 'Meraki authentication failed.');
+    assert.ok(!JSON.stringify(result).includes('validation-secret'));
   });
 });
 

@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import { SecretProvider } from '../../core/secrets';
+import { MERAKI_API_KEY_SECRET, validateMerakiConnection } from '../../integrations/meraki';
 import { VscodeSecretProvider } from './vscodeSecretProvider';
-
-export const MERAKI_API_KEY_SECRET = 'jcg.meraki.apiKey';
 
 export const enum MerakiSecretCommand {
   Configure = 'net-commander.configureMerakiApiKey',
   Remove = 'net-commander.removeMerakiApiKey',
   Check = 'net-commander.checkMerakiApiConfiguration',
+  Validate = 'net-commander.validateMerakiConnection',
 }
 
 export function registerMerakiSecretCommands(context: vscode.ExtensionContext): void {
@@ -16,6 +16,7 @@ export function registerMerakiSecretCommands(context: vscode.ExtensionContext): 
     vscode.commands.registerCommand(MerakiSecretCommand.Configure, () => configureMerakiApiKey(secrets)),
     vscode.commands.registerCommand(MerakiSecretCommand.Remove, () => removeMerakiApiKey(secrets)),
     vscode.commands.registerCommand(MerakiSecretCommand.Check, () => checkMerakiApiConfiguration(secrets)),
+    vscode.commands.registerCommand(MerakiSecretCommand.Validate, () => validateMerakiConnectionCommand(secrets)),
   );
 }
 
@@ -56,4 +57,39 @@ async function checkMerakiApiConfiguration(secrets: SecretProvider): Promise<voi
   await vscode.window.showInformationMessage(
     `Meraki API configuration: ${configured ? 'Configured' : 'Not configured'}`,
   );
+}
+
+async function validateMerakiConnectionCommand(secrets: SecretProvider): Promise<void> {
+  const result = await validateMerakiConnection(secrets);
+  const lines = [
+    result.message,
+    '',
+    `Authentication: ${result.authentication}`,
+    `API Reachability: ${result.apiReachability}`,
+    `Organizations: ${result.organizations.length}`,
+    `Evidence Normalization: ${result.evidenceNormalization}`,
+    `Credential Exposure: ${result.credentialExposure} - none detected`,
+    `Access Mode: ${result.accessMode}`,
+  ];
+  if (result.organizations.length) {
+    lines.push('', 'Organizations:', ...result.organizations, '', 'No configuration changes performed.');
+  }
+  if (result.gate2) {
+    lines.push(
+      '',
+      'Gate 2 Organization:', result.gate2.organizationName,
+      `Network count: ${result.gate2.networkCount}`,
+      `Device count: ${result.gate2.deviceCount}`,
+      'Devices by product type:',
+      ...Object.entries(result.gate2.devicesByProductType).map(([productType, count]) => `  ${productType}: ${count}`),
+      `Evidence Normalization: ${result.gate2.evidenceNormalization}`,
+      `Pagination: ${result.gate2.pagination}`,
+      `Cache: ${result.gate2.cacheSummary}`,
+      `Access Mode: ${result.gate2.accessMode}`,
+      '',
+      'No configuration changes performed.',
+    );
+  }
+  const show = result.ok ? vscode.window.showInformationMessage : vscode.window.showErrorMessage;
+  await show(lines.join('\n'));
 }

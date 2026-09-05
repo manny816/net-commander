@@ -45,7 +45,8 @@
     "ping"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onCommand:net-commander.validateMerakiConnection"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -113,6 +114,10 @@
       {
         "command": "net-commander.checkMerakiApiConfiguration",
         "title": "JCG Network TS: Check Meraki API Configuration"
+      },
+      {
+        "command": "net-commander.validateMerakiConnection",
+        "title": "JCG Network TS: Validate Meraki Connection"
       },
       {
         "command": "netcmd.copyLastOutput",

@@ -12,6 +12,16 @@ The Meraki integration lives under `src/integrations/meraki/`:
 
 The initial service exposes only organization, organization-network, and organization-device discovery.
 
+## Gate 1 connection validation
+
+The VS Code command `JCG Network TS: Validate Meraki Connection` performs the first live validation. It obtains the key through `SecretProvider`, constructs the existing client and evidence service, and calls exactly:
+
+`GET https://api.meraki.com/api/v1/organizations`
+
+It does not call network, device, client, configuration, firewall, telemetry, or mutation endpoints. The user-facing result reports authentication, reachability, organization count and names, evidence normalization, credential exposure status, and read-only access mode. Organization IDs are not displayed.
+
+Gate 2 extends this same command for the organization `LVMH BeautyTech AMER`. After resolving its ID from the organization list, it calls only the organization networks and organization devices GET endpoints. The report includes network and device counts, device counts grouped by product type, evidence normalization, pagination, and cache status. Client, configuration, firewall, VPN, and telemetry endpoints remain out of scope. Organization IDs remain internal and are not displayed.
+
 ## SecretProvider abstraction
 
 The core platform uses the platform-neutral `SecretProvider` contract in `src/core/secrets/`:
