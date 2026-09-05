@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Net Commander Extension",
+      "name": "Run JCG Network TS Platform",
       "type": "extensionHost",
       "request": "launch",
       "args": [

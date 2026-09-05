@@ -21,42 +21,174 @@
   "engines": {
     "vscode": "^1.99.0"
   },
-  "categories": ["Other"],
-  "keywords": ["network troubleshooting", "network intelligence", "wifi analyzer", "rf analyzer", "wireless assurance", "packet capture", "root cause analysis", "cidr calculator", "ssh", "terminal", "cisco", "meraki", "aruba", "mist", "ruckus", "unifi", "traceroute", "ping"],
-  "activationEvents": ["onStartupFinished"],
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "network troubleshooting",
+    "network intelligence",
+    "wifi analyzer",
+    "rf analyzer",
+    "wireless assurance",
+    "packet capture",
+    "root cause analysis",
+    "cidr calculator",
+    "ssh",
+    "terminal",
+    "cisco",
+    "meraki",
+    "aruba",
+    "mist",
+    "ruckus",
+    "unifi",
+    "traceroute",
+    "ping"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      {"command":"sshConnect.connect","title":"JCG Network TS: SSH Connect"},
-      {"command":"net-commander.cidrcalc","title":"JCG Network TS: CIDR Calculator"},
-      {"command":"net-commander.checkIpInfo","title":"JCG Network TS: Public IP Lookup"},
-      {"command":"net-commander.checkMyIpInfo","title":"JCG Network TS: Get My Public IP"},
-      {"command":"net-commander.ping","title":"JCG Network TS: Ping"},
-      {"command":"net-commander.traceroute","title":"JCG Network TS: Traceroute"},
-      {"command":"net-commander.ianaportcalc","title":"JCG Network TS: IANA Port Calculator"},
-      {"command":"net-commander.peeringdb","title":"JCG Network TS: PeeringDB Lookup"},
-      {"command":"net-commander.wifiAnalyzer","title":"JCG Network TS: RF Analyzer"},
-      {"command":"net-commander.rootcauseAnalysis","title":"JCG Network TS: Root Cause Analysis"},
-      {"command":"net-commander.azureCidrAnalyzer","title":"JCG Network TS: Azure CIDR Analyzer"},
-      {"command":"net-commander.awsCidrAnalyzer","title":"JCG Network TS: AWS CIDR Analyzer"},
-      {"command":"net-commander.gcpCidrAnalyzer","title":"JCG Network TS: GCP CIDR Analyzer"},
-      {"command":"netcmd.copyLastOutput","title":"Copy Output","icon":"$(copy)"},
-      {"command":"netcmd.saveLastOutput","title":"Download Output","icon":"$(cloud-download)"},
-      {"command":"net-commander.selectWindowsAdapter","title":"JCG Network TS: Select Windows Network Adapter"}
+      {
+        "command": "sshConnect.connect",
+        "title": "JCG Network TS: SSH Connect"
+      },
+      {
+        "command": "net-commander.cidrcalc",
+        "title": "JCG Network TS: CIDR Calculator"
+      },
+      {
+        "command": "net-commander.checkIpInfo",
+        "title": "JCG Network TS: Public IP Lookup"
+      },
+      {
+        "command": "net-commander.checkMyIpInfo",
+        "title": "JCG Network TS: Get My Public IP"
+      },
+      {
+        "command": "net-commander.ping",
+        "title": "JCG Network TS: Ping"
+      },
+      {
+        "command": "net-commander.traceroute",
+        "title": "JCG Network TS: Traceroute"
+      },
+      {
+        "command": "net-commander.ianaportcalc",
+        "title": "JCG Network TS: IANA Port Calculator"
+      },
+      {
+        "command": "net-commander.peeringdb",
+        "title": "JCG Network TS: PeeringDB Lookup"
+      },
+      {
+        "command": "net-commander.wifiAnalyzer",
+        "title": "JCG Network TS: RF Analyzer"
+      },
+      {
+        "command": "net-commander.rootcauseAnalysis",
+        "title": "JCG Network TS: Root Cause Analysis"
+      },
+      {
+        "command": "net-commander.azureCidrAnalyzer",
+        "title": "JCG Network TS: Azure CIDR Analyzer"
+      },
+      {
+        "command": "net-commander.awsCidrAnalyzer",
+        "title": "JCG Network TS: AWS CIDR Analyzer"
+      },
+      {
+        "command": "net-commander.gcpCidrAnalyzer",
+        "title": "JCG Network TS: GCP CIDR Analyzer"
+      },
+      {
+        "command": "netcmd.copyLastOutput",
+        "title": "Copy Output",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "netcmd.saveLastOutput",
+        "title": "Download Output",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "net-commander.selectWindowsAdapter",
+        "title": "JCG Network TS: Select Windows Network Adapter"
+      }
     ],
-    "menus": {"view/title":[{"command":"netcmd.copyLastOutput","when":"view == terminal","group":"navigation"},{"command":"netcmd.saveLastOutput","when":"view == terminal","group":"navigation"}]},
-    "terminal": {"profiles":[{"id":"sshConnect.profile","title":"SSH: Select Host","icon":"remote"}]},
+    "menus": {
+      "view/title": [
+        {
+          "command": "netcmd.copyLastOutput",
+          "when": "view == terminal",
+          "group": "navigation"
+        },
+        {
+          "command": "netcmd.saveLastOutput",
+          "when": "view == terminal",
+          "group": "navigation"
+        }
+      ]
+    },
+    "terminal": {
+      "profiles": [
+        {
+          "id": "sshConnect.profile",
+          "title": "SSH: Select Host",
+          "icon": "remote"
+        }
+      ]
+    },
     "configuration": {
-      "type":"object",
-      "title":"JCG Network TS Platform",
+      "type": "object",
+      "title": "JCG Network TS Platform",
       "properties": {
-        "netCommander.ipinfoApiKey":{"type":"string","default":"","description":"Open a Free account at ipinfo.io website and get your free API key from your dashboard API Token and paste it here."},
-        "netCommander.ianaCsvUrl":{"type":"string","default":"https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv","description":"This is the precompiled URL for IANA port assignments. Verify the URL at the IANA site and replace here if they update it https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml"},
-        "netCommander.windowsAdapterName":{"type":"string","default":"","description":"Selected Windows network adapter for traffic monitoring (RX/TX)","markdownDescription":"Run the command 'JCG Network TS: Select Windows Network Adapter' to populate this.","scope":"machine"},
-        "netCommander.azureGraphToken":{"type":"string","default":"","description":"Bearer token with access to Azure Resource Graph (management.azure.com).","markdownDescription":"Generate a token via Azure CLI: `az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv` and paste it here.","scope":"machine"},
-        "netCommander.awsAccessKeyId":{"type":"string","default":"","description":"AWS access key ID used by the AWS CIDR Analyzer.","markdownDescription":"Create a user or role with least-privilege access (for example, `ec2:Describe*` permissions) and provide the Access Key ID here.","scope":"machine"},
-        "netCommander.awsSecretAccessKey":{"type":"string","default":"","description":"AWS secret access key paired with the configured access key ID.","markdownDescription":"Store the AWS secret access key associated with the access key ID. Rotate this credential regularly.","scope":"machine"},
-        "netCommander.awsSessionToken":{"type":"string","default":"","description":"Optional AWS session token for temporary credentials.","markdownDescription":"Populate when using temporary credentials such as those from AWS STS (`aws sts get-session-token`). Leave blank when using long-lived access keys.","scope":"machine"}
+        "netCommander.ipinfoApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Open a Free account at ipinfo.io website and get your free API key from your dashboard API Token and paste it here."
+        },
+        "netCommander.ianaCsvUrl": {
+          "type": "string",
+          "default": "https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv",
+          "description": "This is the precompiled URL for IANA port assignments. Verify the URL at the IANA site and replace here if they update it https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml"
+        },
+        "netCommander.windowsAdapterName": {
+          "type": "string",
+          "default": "",
+          "description": "Selected Windows network adapter for traffic monitoring (RX/TX)",
+          "markdownDescription": "Run the command 'JCG Network TS: Select Windows Network Adapter' to populate this.",
+          "scope": "machine"
+        },
+        "netCommander.azureGraphToken": {
+          "type": "string",
+          "default": "",
+          "description": "Bearer token with access to Azure Resource Graph (management.azure.com).",
+          "markdownDescription": "Generate a token via Azure CLI: `az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv` and paste it here.",
+          "scope": "machine"
+        },
+        "netCommander.awsAccessKeyId": {
+          "type": "string",
+          "default": "",
+          "description": "AWS access key ID used by the AWS CIDR Analyzer.",
+          "markdownDescription": "Create a user or role with least-privilege access (for example, `ec2:Describe*` permissions) and provide the Access Key ID here.",
+          "scope": "machine"
+        },
+        "netCommander.awsSecretAccessKey": {
+          "type": "string",
+          "default": "",
+          "description": "AWS secret access key paired with the configured access key ID.",
+          "markdownDescription": "Store the AWS secret access key associated with the access key ID. Rotate this credential regularly.",
+          "scope": "machine"
+        },
+        "netCommander.awsSessionToken": {
+          "type": "string",
+          "default": "",
+          "description": "Optional AWS session token for temporary credentials.",
+          "markdownDescription": "Populate when using temporary credentials such as those from AWS STS (`aws sts get-session-token`). Leave blank when using long-lived access keys.",
+          "scope": "machine"
+        }
       }
     }
   },
@@ -69,8 +201,7 @@
     "lint": "eslint src",
     "test": "vscode-test",
     "package": "npm run rebuild && vsce package",
-    "dev:stop": "pkill -f 'extensionHost' 2>/dev/null || true",
-    "dev:restart": "npm run compile && npm run dev:stop"
+    "dev:restart": "npm run compile && printf '\\nJCG build complete.\\nIn VS Code: Shift+F5 to stop the current Development Host, then F5 to launch Run JCG Network TS Platform.\\n\\n'"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

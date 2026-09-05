@@ -117,7 +117,7 @@ export function registerWiFiAnalyzer(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('net-commander.wifiAnalyzer', () => {
       const panel = vscode.window.createWebviewPanel(
         'wifiAnalyzer',
-        'NET Commander: WiFi Analyzer',
+        'JCG Network TS: RF Analyzer',
         vscode.ViewColumn.One,
         {
           enableScripts: true,
@@ -774,7 +774,7 @@ function showWebviewContent(nonce: string, cspSource: string, d3Src: string, ele
   <div class="layout">
     <!-- TOP BAR: title + controls -->
     <div class="top-bar">
-      <h1>NET Commander WiFi Analyzer</h1>
+      <h1>JCG Network TS Platform - RF Analyzer</h1>
       <div class="controls">
         <vscode-button id="csvBtn">Get RAW csv data</vscode-button>
         <vscode-button id="pcapBtn">Start Packet Capture</vscode-button>

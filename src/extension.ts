@@ -98,6 +98,15 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand(id, fn));
   }
 
+  // Development launcher support:
+  // When JCG_AUTO_OPEN_RF=1 is present, automatically open the RF Analyzer.
+  // This allows the macOS Desktop launcher to provide a one-click workflow.
+  if (process.env.JCG_AUTO_OPEN_RF === '1') {
+    setTimeout(() => {
+      void vscode.commands.executeCommand('net-commander.wifiAnalyzer');
+    }, 750);
+  }
+
   activateNetworkColorizer(context);
   context.subscriptions.push(
     vscode.window.registerTerminalProfileProvider(Command.SSH_TERMINAL, {

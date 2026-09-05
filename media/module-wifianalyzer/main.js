@@ -60,7 +60,57 @@
 
   function engineerHeader() {
     const title = document.querySelector('.top-bar h1');
-    if (title) title.textContent = 'NET Commander RF Dashboard';
+    if (title) title.textContent = 'JCG Network TS Platform - RF Analyzer';
+
+    const controls = document.querySelector('.top-bar .controls');
+if (controls && !document.getElementById('jcg-product-meta')) {
+  const meta = document.createElement('div');
+  meta.id = 'jcg-product-meta';
+  meta.style.textAlign = 'right';
+  meta.style.marginRight = '14px';
+  meta.style.fontSize = '11px';
+  meta.style.lineHeight = '1.5';
+
+  meta.innerHTML = `
+    <div style="
+      color:#A3E635;
+      font-weight:600;
+      font-size:12px;
+      letter-spacing:0.2px;
+      margin-bottom:3px;">
+      Developed by Manny Colón for JCG Solutions
+    </div>
+
+    <div style="color:var(--vscode-descriptionForeground);">
+      Developer restart:
+      <code style="
+        color:#A3E635;
+        background:rgba(163,230,53,0.08);
+        border:1px solid rgba(163,230,53,0.35);
+        border-radius:5px;
+        padding:2px 7px;
+        margin-left:4px;
+        font-weight:600;">
+        npm run dev:restart
+      </code>
+    </div>
+  `;
+
+  controls.insertBefore(meta, controls.firstChild);
+}
+    if (controls && !document.getElementById('jcg-product-meta')) {
+      const meta = document.createElement('div');
+      meta.id = 'jcg-product-meta';
+      meta.style.textAlign = 'right';
+      meta.style.marginRight = '14px';
+      meta.style.fontSize = '11px';
+      meta.style.lineHeight = '1.45';
+      meta.style.color = 'var(--vscode-descriptionForeground)';
+      meta.innerHTML =
+        '<div>Developed by <strong>Manny Colón</strong> for <strong>JCG Solutions</strong></div>' +
+        '<div>Developer restart: <code>npm run dev:restart</code></div>';
+      controls.insertBefore(meta, controls.firstChild);
+    }
 
     const header = document.querySelector('.header');
     if (!header) return;
@@ -101,8 +151,8 @@
     if (neighborHeader) {
       neighborHeader.innerHTML = `
         <div>
-          <h2>Neighbor / Interference Context</h2>
-          <div class="panel-subtitle">Strong neighbors are not inherently bad. Evaluate channel reuse, overlap and airtime context.</div>
+          <h2>Observed RF Environment</h2>
+          <div class="panel-subtitle">Observed radios are evidence, not automatically interference. Classification requires channel, width, signal, identity and airtime context.</div>
         </div>`;
     }
 
@@ -226,7 +276,7 @@
       ['SNR', Number.isFinite(snr(info)) ? `${snr(info)} dB` : undefined],
       ['Tx PHY rate', Number.isFinite(info.txRateMbps) ? `${info.txRateMbps} Mbps` : undefined],
       ['MCS index', info.mcsIndex], ['Security', info.security], ['Network type', info.networkType],
-      ['Neighbor radios', Array.isArray(info.neighborDetails) ? info.neighborDetails.length : 0],
+      ['Observed radios', Array.isArray(info.neighborDetails) ? info.neighborDetails.length : 0],
       ['RX bytes', info.rxBytes], ['TX bytes', info.txBytes], ['Dropped RX', info.rxDropped], ['Dropped TX', info.txDropped]
     ];
     fields.forEach(([key, value]) => {
@@ -271,7 +321,7 @@
     neighbors.sort((a, b) => (Number(b.signalDbm) || -999) - (Number(a.signalDbm) || -999));
 
     if (!neighbors.length) {
-      body.innerHTML = '<div class="coming-data">No neighbor RF records are currently exposed by macOS. Current-link RF evidence remains available.</div>';
+      body.innerHTML = '<div class="coming-data">No observed RF records are currently available. Current-link RF evidence remains available.</div>';
       return;
     }
 
@@ -287,12 +337,12 @@
 
     body.innerHTML = `
       <div class="neighbor-summary">
-        <div><span>Detected radios</span><strong>${neighbors.length}</strong></div>
-        <div><span>Same primary channel</span><strong>${sameChannel}</strong></div>
-        <div><span>Strongest neighbor</span><strong>${Number.isFinite(strongest.signalDbm) ? strongest.signalDbm + ' dBm' : 'n/a'}</strong></div>
+        <div><span>Observed radios</span><strong>${neighbors.length}</strong></div>
+        <div><span>Observed radios on serving channel</span><strong>${sameChannel}</strong></div>
+        <div><span>Strongest observed radio</span><strong>${Number.isFinite(strongest.signalDbm) ? strongest.signalDbm + ' dBm' : 'n/a'}</strong></div>
       </div>
       <div class="neighbor-list">${rows}</div>
-      <div class="evidence-note">Same-channel count is a candidate CCI indicator only. Airtime utilization and AP identity are required before declaring interference.</div>`;
+      <div class="evidence-note">A same-channel observation is evidence only. AP identity, channel width, airtime utilization and RF context are required before classifying CCI or interference.</div>`;
   }
 
   function renderChannelContext(info) {
