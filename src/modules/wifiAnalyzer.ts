@@ -336,38 +336,46 @@ async function gatherWiFiInfo(): Promise<WiFiInfo> {
       await parseLinuxDev(info as WiFiInfo);
     }
 
-    let raw: Array<{ channel: number; strength: number }> = [];
-    if (info.iface) {
-      raw = await parseNeighbors(info.iface, platform) as any;
-    }
+    // macOS neighbor evidence already comes from gatherMacOSWiFiEvidence().
+    // Do not run the legacy airport-based collectors because modern macOS
+    // no longer ships the airport command and an empty result would overwrite
+    // authoritative system_profiler evidence.
+    if (platform !== 'darwin') {
+      let raw: Array<{ channel: number; strength: number }> = [];
+      if (info.iface) {
+        raw = await parseNeighbors(info.iface, platform) as any;
+      }
 
-    const maxByCh = new Map<number, number>();
-    for (const { channel, strength } of raw) {
-      const prev = maxByCh.get(channel) || 0;
-      maxByCh.set(channel, Math.max(prev, strength));
-    }
+      const maxByCh = new Map<number, number>();
+      for (const { channel, strength } of raw) {
+        const prev = maxByCh.get(channel) || 0;
+        maxByCh.set(channel, Math.max(prev, strength));
+      }
 
-    if (info.channel != null) {
-      const myPct =
-        info.signalPercent != null
-          ? info.signalPercent
-          : info.signalDbm != null
-          ? Math.min(100, Math.round(((info.signalDbm + 100) / 70) * 100))
-          : 0;
-      const prev = maxByCh.get(info.channel) || 0;
-      maxByCh.set(info.channel, Math.max(prev, myPct));
-    }
+      if (info.channel != null) {
+        const myPct =
+          info.signalPercent != null
+            ? info.signalPercent
+            : info.signalDbm != null
+            ? Math.min(100, Math.round(((info.signalDbm + 100) / 70) * 100))
+            : 0;
+        const prev = maxByCh.get(info.channel) || 0;
+        maxByCh.set(info.channel, Math.max(prev, myPct));
+      }
 
-    let rawNeighbors: Array<{ssid:string;channel:number;strength:number}> = [];
-    if (info.iface) {
-      rawNeighbors = await parseNeighborsDetailed(info.iface, platform);
-    }
-    info.neighborDetails = rawNeighbors;
-    info.neighborBars = Array.from(maxByCh.entries())
-      .map(([channel, strength]) => ({ channel, strength }))
-      .sort((a, b) => a.channel - b.channel);
-    if (info.iface) {
-      info.neighborSSIDs = await parseNeighborSSIDs(info.iface, platform);
+      let rawNeighbors: Array<{ssid:string;channel:number;strength:number}> = [];
+      if (info.iface) {
+        rawNeighbors = await parseNeighborsDetailed(info.iface, platform);
+      }
+
+      info.neighborDetails = rawNeighbors;
+      info.neighborBars = Array.from(maxByCh.entries())
+        .map(([channel, strength]) => ({ channel, strength }))
+        .sort((a, b) => a.channel - b.channel);
+
+      if (info.iface) {
+        info.neighborSSIDs = await parseNeighborSSIDs(info.iface, platform);
+      }
     }
 
 return {
