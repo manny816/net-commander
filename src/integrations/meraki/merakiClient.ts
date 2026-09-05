@@ -1,4 +1,5 @@
 import { MerakiApiError, MerakiConfigurationError, MerakiPaginationError } from './merakiErrors';
+import { SecretProvider } from '../../core/secrets';
 import {
   MerakiApiKeyProvider,
   MerakiFetch,
@@ -99,7 +100,7 @@ export class MerakiClient {
         const metadata = await this.readMetadata(response);
 
         if (response.ok) {
-          return { data: await this.readJson<T>(response), metadata };
+          return { data: await this.readJson<T>(response, apiKey), metadata };
         }
 
         const body = await this.readErrorBody(response);
@@ -112,10 +113,10 @@ export class MerakiClient {
         throw new MerakiApiError({
           message: `Meraki API request failed with HTTP ${response.status}`,
           status: response.status,
-          responseHeaders: metadata.headers,
-          requestId: metadata.requestId,
+          responseHeaders: this.redact(metadata.headers, apiKey) as Record<string, string>,
+          requestId: metadata.requestId ? this.redact(metadata.requestId, apiKey) as string : undefined,
           rateLimit: metadata.rateLimit,
-          responseBody: body,
+          responseBody: this.redact(body, apiKey),
         });
       } catch (error) {
         if (error instanceof MerakiApiError || error instanceof MerakiPaginationError) throw error;
@@ -123,7 +124,7 @@ export class MerakiClient {
           throw new MerakiApiError({
             message: 'Meraki API request failed',
             status: 0,
-            responseBody: error instanceof Error ? error.message : undefined,
+            responseBody: this.redact(error instanceof Error ? error.message : undefined, apiKey),
           });
         }
         await this.sleep(this.retryDelayMs(undefined, attempt));
@@ -137,11 +138,17 @@ export class MerakiClient {
   private async resolveApiKey(): Promise<string> {
     const value = typeof this.apiKey === 'string'
       ? this.apiKey
+      : this.isSecretProvider(this.apiKey)
+        ? await this.apiKey.getSecret('jcg.meraki.apiKey')
       : typeof this.apiKey === 'function'
         ? await this.apiKey()
         : await this.apiKey.getApiKey();
     if (!value) throw new MerakiConfigurationError('Meraki API key was not provided');
     return value;
+  }
+
+  private isSecretProvider(value: MerakiApiKeyProvider): value is SecretProvider {
+    return typeof value !== 'string' && typeof value !== 'function' && 'getSecret' in value;
   }
 
   private buildUrl(path: string, query?: Record<string, string | number | boolean | undefined>): string {
@@ -199,14 +206,14 @@ export class MerakiClient {
     return links.find(link => link.rel === 'next')?.url;
   }
 
-  private async readJson<T>(response: Response): Promise<T> {
+  private async readJson<T>(response: Response, secret: string): Promise<T> {
     try {
       return await response.json() as T;
     } catch {
       throw new MerakiApiError({
         message: 'Meraki API returned malformed JSON',
         status: response.status,
-        responseHeaders: this.headers(response),
+        responseHeaders: this.redact(this.headers(response), secret) as Record<string, string>,
       });
     }
   }
@@ -219,6 +226,15 @@ export class MerakiClient {
     const headers: Record<string, string> = {};
     response.headers.forEach((value, key) => { headers[key] = value; });
     return headers;
+  }
+
+  private redact(value: unknown, secret: string): unknown {
+    if (typeof value === 'string') return value.split(secret).join('[REDACTED]');
+    if (Array.isArray(value)) return value.map(item => this.redact(item, secret));
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, this.redact(item, secret)]));
+    }
+    return value;
   }
 
   private numberHeader(value: string | null): number | undefined {

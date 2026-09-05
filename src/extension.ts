@@ -51,6 +51,7 @@ import {
 import { activate as activateTerminalEnhancer, deactivate as deactivateTerminalEnhancer } from './modules/terminalEnhancer';
  
 import { getHosts, HostEntry }        from './helpers/sshHosts';
+import { registerMerakiSecretCommands } from './platform/vscode/merakiSecretCommands';
 
 const enum Command {
   SSH_CONNECT     = 'sshConnect.connect',
@@ -78,6 +79,7 @@ const enum Command {
 export function activate(context: vscode.ExtensionContext): void { 
   activateTerminalEnhancer(context);
   registerWiFiAnalyzer(context);
+  registerMerakiSecretCommands(context);
   const cmds: Array<[Command, (...args: any[]) => unknown]> = [
     [Command.SSH_CONNECT,   sshConnectCommand],
     [Command.PING_PANEL,    () => PingPanel.createOrShow(context.extensionUri)],

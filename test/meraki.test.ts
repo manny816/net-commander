@@ -1,9 +1,11 @@
 import * as assert from 'assert';
+import { SecretProvider } from '../src/core/secrets';
 
 import {
   MerakiApiError,
   MerakiClient,
   MerakiEvidenceService,
+  MerakiConfigurationError,
 } from '../src/integrations/meraki';
 
 interface Call {
@@ -15,7 +17,75 @@ function response(body: unknown, status = 200, headers: Record<string, string> =
   return new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers });
 }
 
+class FakeSecretProvider implements SecretProvider {
+  private readonly values = new Map<string, string>();
+
+  async getSecret(key: string): Promise<string | undefined> {
+    return this.values.get(key);
+  }
+
+  async setSecret(key: string, value: string): Promise<void> {
+    this.values.set(key, value);
+  }
+
+  async deleteSecret(key: string): Promise<void> {
+    this.values.delete(key);
+  }
+}
+
+describe('SecretProvider contract', () => {
+  it('supports set, get, and delete with an in-memory provider', async () => {
+    const provider = new FakeSecretProvider();
+    await provider.setSecret('test.key', 'secret-value');
+    assert.strictEqual(await provider.getSecret('test.key'), 'secret-value');
+    await provider.deleteSecret('test.key');
+    assert.strictEqual(await provider.getSecret('test.key'), undefined);
+  });
+});
+
 describe('MerakiClient', () => {
+  it('receives the API key through SecretProvider injection', async () => {
+    const provider = new FakeSecretProvider();
+    await provider.setSecret('jcg.meraki.apiKey', 'injected-secret');
+    let header: string | undefined;
+    const client = new MerakiClient({
+      apiKey: provider,
+      fetchFn: async (_url, init) => {
+        header = (init?.headers as Record<string, string>)['X-Cisco-Meraki-API-Key'];
+        return response([]);
+      },
+    });
+
+    await client.get('/organizations');
+    assert.strictEqual(header, 'injected-secret');
+  });
+
+  it('rejects empty injected credentials without exposing them', async () => {
+    const provider = new FakeSecretProvider();
+    const client = new MerakiClient({ apiKey: provider });
+
+    await assert.rejects(client.get('/organizations'), (error: MerakiConfigurationError) => {
+      assert.strictEqual(error.message, 'Meraki API key was not provided');
+      return true;
+    });
+  });
+
+  it('redacts a credential echoed by an API error', async () => {
+    const secret = 'injected-secret';
+    const client = new MerakiClient({
+      apiKey: secret,
+      maxRetries: 0,
+      fetchFn: async () => response({ error: `echoed ${secret}` }, 403, { 'x-request-id': 'req-error' }),
+    });
+
+    await assert.rejects(client.get('/organizations'), error => {
+      const serialized = JSON.stringify(error);
+      assert.ok(!serialized.includes(secret));
+      assert.ok(serialized.includes('req-error'));
+      return true;
+    });
+  });
+
   it('performs a GET with an injected API key and preserves request metadata', async () => {
     const calls: Call[] = [];
     const client = new MerakiClient({
@@ -142,6 +212,9 @@ describe('MerakiEvidenceService', () => {
     assert.strictEqual(first.evidence.source.requestId, 'req-1');
     assert.strictEqual(first.evidence.observedAt, '2026-09-05T12:00:00.000Z');
     assert.strictEqual(first.evidence.context?.organizationId, undefined);
+    assert.ok(!JSON.stringify(first.evidence).includes('test-secret-key'));
+    assert.ok(!first.cache.cacheKey.includes('test-secret-key'));
+    assert.strictEqual(second.response.requestId, 'req-1');
   });
 
   it('preserves organization context for network and device discovery', async () => {

@@ -103,6 +103,18 @@
         "title": "JCG Network TS: GCP CIDR Analyzer"
       },
       {
+        "command": "net-commander.configureMerakiApiKey",
+        "title": "JCG Network TS: Configure Meraki API Key"
+      },
+      {
+        "command": "net-commander.removeMerakiApiKey",
+        "title": "JCG Network TS: Remove Meraki API Key"
+      },
+      {
+        "command": "net-commander.checkMerakiApiConfiguration",
+        "title": "JCG Network TS: Check Meraki API Configuration"
+      },
+      {
         "command": "netcmd.copyLastOutput",
         "title": "Copy Output",
         "icon": "$(copy)"

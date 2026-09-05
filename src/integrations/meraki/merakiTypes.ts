@@ -1,10 +1,11 @@
 import { EvidenceRecord } from '../../core/evidence';
+import { SecretProvider } from '../../core/secrets';
 
 export interface MerakiCredentials {
   getApiKey(): string | Promise<string | undefined> | undefined;
 }
 
-export type MerakiApiKeyProvider = string | MerakiCredentials | (() => string | Promise<string | undefined> | undefined);
+export type MerakiApiKeyProvider = string | SecretProvider | MerakiCredentials | (() => string | Promise<string | undefined> | undefined);
 
 export interface MerakiRequestOptions {
   query?: Record<string, string | number | boolean | undefined>;

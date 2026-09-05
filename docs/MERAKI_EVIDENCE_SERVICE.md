@@ -12,6 +12,18 @@ The Meraki integration lives under `src/integrations/meraki/`:
 
 The initial service exposes only organization, organization-network, and organization-device discovery.
 
+## SecretProvider abstraction
+
+The core platform uses the platform-neutral `SecretProvider` contract in `src/core/secrets/`:
+
+- `getSecret(key)` retrieves a secret.
+- `setSecret(key, value)` stores a secret.
+- `deleteSecret(key)` removes a secret.
+
+The current VS Code adapter is `VscodeSecretProvider`, backed by `vscode.ExtensionContext.secrets`. The Meraki client receives this provider through dependency injection and does not import VS Code. Future adapters can target environment-backed development credentials, Vault, or cloud secret managers without changing the Meraki integration.
+
+The Meraki key uses the secret identifier `jcg.meraki.apiKey`. It is never stored in normal VS Code settings or `settings.json`.
+
 ## Read-only guarantee
 
 The client creates only `GET` requests. There are no POST, PUT, or DELETE methods. The service does not expose configuration mutation endpoints.
@@ -20,7 +32,15 @@ The client creates only `GET` requests. There are no POST, PUT, or DELETE method
 
 A caller injects an API key string, a credential provider, or an object implementing `getApiKey()`. The integration does not choose where credentials are stored. API keys are sent only in the `X-Cisco-Meraki-API-Key` request header and are never logged, included in cache keys, or stored in EvidenceRecords.
 
-Secure VS Code `SecretStorage` integration can be added at the composition boundary in a later milestone without changing the client or service contracts.
+The VS Code `SecretStorage` adapter is composed at the extension boundary without changing the client or service contracts.
+
+The VS Code commands are:
+
+- `JCG Network TS: Configure Meraki API Key`
+- `JCG Network TS: Remove Meraki API Key`
+- `JCG Network TS: Check Meraki API Configuration`
+
+Configuration prompts are password-masked, trim whitespace, reject empty input, and report only success. Removal requires confirmation. Configuration checks report only `Configured` or `Not configured`; they do not reveal key length, prefix, suffix, hash, or fingerprints.
 
 ## Rate limits and retries
 
@@ -52,4 +72,4 @@ The service preserves vendor data and does not infer diagnoses or operational re
 
 ## Security considerations
 
-Tests use injected fake transports and never call the Meraki API. Do not place API keys in source, package metadata, fixtures, logs, cache keys, or EvidenceRecords. Production composition should obtain credentials from an approved secure store and pass them through dependency injection.
+Tests use injected fake transports and fake secret providers and never call the Meraki API. Do not place API keys in source, package metadata, fixtures, logs, cache keys, structured errors, or EvidenceRecords. Production composition obtains credentials from VS Code SecretStorage today and can later use an approved secure store through the same abstraction.
