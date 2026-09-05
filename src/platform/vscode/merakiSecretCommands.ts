@@ -89,6 +89,28 @@ async function validateMerakiConnectionCommand(secrets: SecretProvider): Promise
       '',
       'No configuration changes performed.',
     );
+    if (result.gate2.inventory) {
+      const inventory = result.gate2.inventory;
+      lines.push(
+        '',
+        'MERAKI INVENTORY VALIDATION',
+        '',
+        `Organization: ${inventory.organizationName}`,
+        '',
+        `Networks: ${inventory.networkCount}`,
+        `Devices: ${inventory.deviceCount}`,
+        '',
+        'Product Types:',
+        ...Object.entries(inventory.productTypes).map(([productType, count]) => `${productType}: ${count}`),
+        '',
+        `Inventory normalization: ${inventory.inventoryNormalization}`,
+        `Duplicate device check: ${inventory.duplicateDeviceCheck}`,
+        `Network/device relationship check: ${inventory.relationshipCheck}`,
+        `Index validation: ${inventory.indexValidation}`,
+        `Evidence provenance: ${inventory.evidenceProvenance}`,
+        `Access mode: ${inventory.accessMode}`,
+      );
+    }
   }
   const show = result.ok ? vscode.window.showInformationMessage : vscode.window.showErrorMessage;
   await show(lines.join('\n'));
