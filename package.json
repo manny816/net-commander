@@ -1,61 +1,58 @@
 {
-  "name": "net-commander",
-  "displayName": "Net Commander ",
-  "description": "Net Commander is the extension for Visual Studio Code dedicated to Network Engineers, DevOps Engineers and Solution Architects streamlining everyday workflows and accelerating data-driven root-cause analysis.",
+  "name": "jcg-network-ts-platform",
+  "displayName": "JCG Network TS Platform",
+  "description": "Vendor-neutral network troubleshooting and intelligence platform developed by Manny Colón for JCG Solutions.",
   "version": "0.1.3",
   "extensionKind": [
     "workspace",
     "ui"
   ],
-  "publisher": "skhell",
+  "publisher": "jcg-solutions",
   "pricing": "Free",
   "category": "Formatters, Others",
   "icon": "media/img/icons/net-commander-icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/skhell/net-commander"
+    "url": "https://github.com/manny816/net-commander"
   },
   "bugs": {
-    "url": "https://github.com/skhell/net-commander/issues"
-  },
-  "sponsor": {
-    "url": "https://github.com/sponsors/skhell"
+    "url": "https://github.com/manny816/net-commander/issues"
   },
   "engines": {
     "vscode": "^1.99.0"
   },
   "categories": ["Other"],
-  "keywords": ["networking", "wifi analyzer", "wifi site survey", "root cause analysis", "ipinfo", "cidr calculator", "ssh", "terminal", "cisco", "arista", "ciena", "iana", "peeringdb", "traceroute", "ping", "colorizer"],
-  "activationEvents": ["onStartupFinished", "onCommand:sshConnect.connect", "onTerminalProfile:sshConnect.profile", "onLanguage:plaintext", "onCommand:net-commander.azureCidrAnalyzer", "onCommand:net-commander.awsCidrAnalyzer", "onCommand:net-commander.gcpCidrAnalyzer", "onCommand:netcmd.copyLastOutput", "onCommand:netcmd.saveLastOutput"],
+  "keywords": ["network troubleshooting", "network intelligence", "wifi analyzer", "rf analyzer", "wireless assurance", "packet capture", "root cause analysis", "cidr calculator", "ssh", "terminal", "cisco", "meraki", "aruba", "mist", "ruckus", "unifi", "traceroute", "ping"],
+  "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      {"command":"sshConnect.connect","title":"NET Commander: SSH Connect"},
-      {"command":"net-commander.cidrcalc","title":"NET Commander: CIDR Calculator"},
-      {"command":"net-commander.checkIpInfo","title":"NET Commander: Public IP lookup - ipinfo.io"},
-      {"command":"net-commander.checkMyIpInfo","title":"NET Commander: Get my Public IP - ipinfo.io"},
-      {"command":"net-commander.ping","title":"NET Commander: Ping"},
-      {"command":"net-commander.traceroute","title":"NET Commander: Traceroute"},
-      {"command":"net-commander.ianaportcalc","title":"NET Commander: IANA Port Calculator"},
-      {"command":"net-commander.peeringdb","title":"NET Commander: PeeringDB Lookup"},
-      {"command":"net-commander.wifiAnalyzer","title":"NET Commander: WiFi Analyzer"},
-      {"command":"net-commander.rootcauseAnalysis","title":"NET Commander: Root Cause Analysis"},
-      {"command":"net-commander.azureCidrAnalyzer","title":"NET Commander: Azure CIDR Analyzer"},
-      {"command":"net-commander.awsCidrAnalyzer","title":"NET Commander: AWS CIDR Analyzer"},
-      {"command":"net-commander.gcpCidrAnalyzer","title":"NET Commander: GCP CIDR Analyzer"},
+      {"command":"sshConnect.connect","title":"JCG Network TS: SSH Connect"},
+      {"command":"net-commander.cidrcalc","title":"JCG Network TS: CIDR Calculator"},
+      {"command":"net-commander.checkIpInfo","title":"JCG Network TS: Public IP Lookup"},
+      {"command":"net-commander.checkMyIpInfo","title":"JCG Network TS: Get My Public IP"},
+      {"command":"net-commander.ping","title":"JCG Network TS: Ping"},
+      {"command":"net-commander.traceroute","title":"JCG Network TS: Traceroute"},
+      {"command":"net-commander.ianaportcalc","title":"JCG Network TS: IANA Port Calculator"},
+      {"command":"net-commander.peeringdb","title":"JCG Network TS: PeeringDB Lookup"},
+      {"command":"net-commander.wifiAnalyzer","title":"JCG Network TS: RF Analyzer"},
+      {"command":"net-commander.rootcauseAnalysis","title":"JCG Network TS: Root Cause Analysis"},
+      {"command":"net-commander.azureCidrAnalyzer","title":"JCG Network TS: Azure CIDR Analyzer"},
+      {"command":"net-commander.awsCidrAnalyzer","title":"JCG Network TS: AWS CIDR Analyzer"},
+      {"command":"net-commander.gcpCidrAnalyzer","title":"JCG Network TS: GCP CIDR Analyzer"},
       {"command":"netcmd.copyLastOutput","title":"Copy Output","icon":"$(copy)"},
       {"command":"netcmd.saveLastOutput","title":"Download Output","icon":"$(cloud-download)"},
-      {"command":"net-commander.selectWindowsAdapter","title":"NET Commander: Select Windows Network Adapter"}
+      {"command":"net-commander.selectWindowsAdapter","title":"JCG Network TS: Select Windows Network Adapter"}
     ],
     "menus": {"view/title":[{"command":"netcmd.copyLastOutput","when":"view == terminal","group":"navigation"},{"command":"netcmd.saveLastOutput","when":"view == terminal","group":"navigation"}]},
     "terminal": {"profiles":[{"id":"sshConnect.profile","title":"SSH: Select Host","icon":"remote"}]},
     "configuration": {
       "type":"object",
-      "title":"NET Commander",
+      "title":"JCG Network TS Platform",
       "properties": {
         "netCommander.ipinfoApiKey":{"type":"string","default":"","description":"Open a Free account at ipinfo.io website and get your free API key from your dashboard API Token and paste it here."},
         "netCommander.ianaCsvUrl":{"type":"string","default":"https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv","description":"This is the precompiled URL for IANA port assignments. Verify the URL at the IANA site and replace here if they update it https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml"},
-        "netCommander.windowsAdapterName":{"type":"string","default":"","description":"Selected Windows network adapter for traffic monitoring (RX/TX)","markdownDescription":"Run the command 'NET Commander: Select Windows Network Adapter' to populate this.","scope":"machine"},
+        "netCommander.windowsAdapterName":{"type":"string","default":"","description":"Selected Windows network adapter for traffic monitoring (RX/TX)","markdownDescription":"Run the command 'JCG Network TS: Select Windows Network Adapter' to populate this.","scope":"machine"},
         "netCommander.azureGraphToken":{"type":"string","default":"","description":"Bearer token with access to Azure Resource Graph (management.azure.com).","markdownDescription":"Generate a token via Azure CLI: `az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv` and paste it here.","scope":"machine"},
         "netCommander.awsAccessKeyId":{"type":"string","default":"","description":"AWS access key ID used by the AWS CIDR Analyzer.","markdownDescription":"Create a user or role with least-privilege access (for example, `ec2:Describe*` permissions) and provide the Access Key ID here.","scope":"machine"},
         "netCommander.awsSecretAccessKey":{"type":"string","default":"","description":"AWS secret access key paired with the configured access key ID.","markdownDescription":"Store the AWS secret access key associated with the access key ID. Rotate this credential regularly.","scope":"machine"},
