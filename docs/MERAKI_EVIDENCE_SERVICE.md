@@ -22,6 +22,14 @@ It does not call network, device, client, configuration, firewall, telemetry, or
 
 Gate 2 extends this same command for the organization `LVMH BeautyTech AMER`. After resolving its ID from the organization list, it calls only the organization networks and organization devices GET endpoints. The report includes network and device counts, device counts grouped by product type, evidence normalization, pagination, and cache status. Client, configuration, firewall, VPN, and telemetry endpoints remain out of scope. Organization IDs remain internal and are not displayed.
 
+## Gate 2.5 inventory foundation
+
+`src/core/inventory/` contains the vendor-neutral inventory model and `InventoryGraph`. It represents Organization -> Network -> Device relationships without inferring physical topology. `InventoryIndexes` provides case-insensitive lookups by network ID, serial, device name, MAC, product type, model, and tag, while graph validation checks duplicate device IDs, relationships, and index consistency.
+
+`merakiInventoryService.ts` maps Meraki discovery records into the core model. It preserves optional model, serial, MAC, management IP, firmware, tags, address, coordinates, and status fields when supplied. Meraki product roles normalize to wireless, switch, appliance, cellularGateway, sensor, camera, or unknown, with extensible generic capabilities. Normalized objects retain the supporting Meraki `EvidenceRecord` IDs and remain vendor-reported.
+
+The Gate 2.5 report exposes only organization name, counts, product-role totals, validation statuses, provenance status, and read-only mode. It does not display serial numbers, MAC addresses, management IPs, or internal IDs. Clients, firewall rules, VPN configuration, switch-port configuration, RF telemetry, event logs, and physical topology remain out of scope.
+
 ## SecretProvider abstraction
 
 The core platform uses the platform-neutral `SecretProvider` contract in `src/core/secrets/`:

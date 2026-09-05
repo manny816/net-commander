@@ -220,6 +220,7 @@
     "compile:test": "tsc -p ./tsconfig.test.json",
     "test:rf": "npm run compile:test && mocha \"out-test/test/macosWifiEvidence.test.js\" \"out-test/test/rfEvidence.test.js\"",
     "test:meraki": "npm run compile:test && mocha \"out-test/test/meraki.test.js\"",
+    "test:inventory": "npm run compile:test && mocha \"out-test/test/inventory.test.js\"",
     "package": "npm run rebuild && vsce package",
     "dev:restart": "npm run compile && printf '\\nJCG build complete.\\nIn VS Code: Shift+F5 to stop the current Development Host, then F5 to launch Run JCG Network TS Platform.\\n\\n'"
   },

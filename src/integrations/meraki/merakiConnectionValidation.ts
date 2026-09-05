@@ -2,6 +2,7 @@ import { SecretProvider } from '../../core/secrets';
 import { MerakiApiError, MerakiConfigurationError } from './merakiErrors';
 import { MerakiClient } from './merakiClient';
 import { MerakiEvidenceService } from './merakiEvidenceService';
+import { buildMerakiInventory } from './merakiInventoryService';
 import { MerakiEvidenceResult } from './merakiTypes';
 
 export const MERAKI_API_KEY_SECRET = 'jcg.meraki.apiKey';
@@ -15,6 +16,20 @@ export interface MerakiGate2Result {
   evidenceNormalization: 'PASS' | 'FAIL';
   pagination: 'PASS' | 'FAIL';
   cacheSummary: string;
+  accessMode: 'READ ONLY';
+  inventory?: MerakiInventoryValidationResult;
+}
+
+export interface MerakiInventoryValidationResult {
+  organizationName: string;
+  networkCount: number;
+  deviceCount: number;
+  productTypes: Record<string, number>;
+  inventoryNormalization: 'PASS' | 'FAIL';
+  duplicateDeviceCheck: 'PASS' | 'FAIL';
+  relationshipCheck: 'PASS' | 'FAIL';
+  indexValidation: 'PASS' | 'FAIL';
+  evidenceProvenance: 'PASS' | 'FAIL';
   accessMode: 'READ ONLY';
 }
 
@@ -80,6 +95,19 @@ export async function validateMerakiConnection(
       counts[group] = (counts[group] ?? 0) + 1;
       return counts;
     }, {});
+    const inventory = buildMerakiInventory({
+      organization: { ...result, data: [target] },
+      networks,
+      devices,
+    });
+    const inventoryChecks = inventory.validate();
+    const inventoryEvidencePass = inventory.organization.evidenceIds.length > 0 &&
+      inventory.networks.every(network => network.evidenceIds.length > 0) &&
+      inventory.devices.every(device => device.evidenceIds.length > 0);
+    const productTypes = inventory.devices.reduce<Record<string, number>>((counts, device) => {
+      counts[device.productType] = (counts[device.productType] ?? 0) + 1;
+      return counts;
+    }, {});
 
     return {
       ok: true,
@@ -99,6 +127,18 @@ export async function validateMerakiConnection(
         pagination: 'PASS',
         cacheSummary: `Organizations: BYPASSED; Networks: ${cacheStatus(networks)}; Devices: ${cacheStatus(devices)}`,
         accessMode: 'READ ONLY',
+        inventory: {
+          organizationName: inventory.organization.name,
+          networkCount: inventory.networks.length,
+          deviceCount: inventory.devices.length,
+          productTypes,
+          inventoryNormalization: 'PASS',
+          duplicateDeviceCheck: inventoryChecks.duplicateDeviceCheck ? 'PASS' : 'FAIL',
+          relationshipCheck: inventoryChecks.relationshipCheck ? 'PASS' : 'FAIL',
+          indexValidation: inventoryChecks.indexCheck ? 'PASS' : 'FAIL',
+          evidenceProvenance: inventoryEvidencePass ? 'PASS' : 'FAIL',
+          accessMode: 'READ ONLY',
+        },
       },
       status: result.response.status,
       requestId: result.response.requestId,

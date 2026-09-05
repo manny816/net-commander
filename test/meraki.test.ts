@@ -239,6 +239,18 @@ describe('Meraki connection validation', () => {
       pagination: 'PASS',
       cacheSummary: 'Organizations: BYPASSED; Networks: MISS; Devices: MISS',
       accessMode: 'READ ONLY',
+      inventory: {
+        organizationName: 'LVMH BeautyTech AMER',
+        networkCount: 2,
+        deviceCount: 3,
+        productTypes: { wireless: 2, switch: 1 },
+        inventoryNormalization: 'PASS',
+        duplicateDeviceCheck: 'PASS',
+        relationshipCheck: 'PASS',
+        indexValidation: 'PASS',
+        evidenceProvenance: 'PASS',
+        accessMode: 'READ ONLY',
+      },
     });
     assert.deepStrictEqual(requests, [
       { url: 'https://api.meraki.com/api/v1/organizations', method: 'GET' },
