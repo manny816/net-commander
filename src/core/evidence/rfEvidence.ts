@@ -37,11 +37,11 @@ export interface RfEvidenceInput {
 export function buildRfEvidence(
   info: RfEvidenceInput
 ): EvidenceRecord[] {
-  const collectedAt = new Date().toISOString();
-
   const sampleTimestamp = info.timestamp
     ? new Date(info.timestamp).getTime()
     : Date.now();
+
+  const collectedAt = new Date(sampleTimestamp).toISOString();
 
   const rfAgeMs = Number.isFinite(info.rfProbeAgeMs)
     ? Math.max(0, Number(info.rfProbeAgeMs))

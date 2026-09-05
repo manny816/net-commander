@@ -1,0 +1,13 @@
+Wi-Fi:
+
+      Current Network Information:
+          Office:
+
+              PHY Mode: 802.11ax
+              Channel: 36 (5GHz, 80MHz)
+              Signal / Noise: -48 dBm / -90 dBm
+              Transmit Rate: 1201
+              MCS Index: 9
+              Security: WPA2 Enterprise
+
+      Other Local Wi-Fi Networks:

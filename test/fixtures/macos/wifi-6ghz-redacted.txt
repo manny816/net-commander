@@ -1,0 +1,30 @@
+Wi-Fi:
+
+      Current Network Information:
+          JCG-6G:
+
+              PHY Mode: 802.11ax
+              Channel: 53 (6GHz, 160MHz)
+              Signal / Noise: -44 dBm / -89 dBm
+              BSSID: 11:22:33:44:55:66
+              Transmit Rate: 2401
+              MCS Index: 9
+              Security: WPA3 Personal
+              Network Type: Infrastructure
+
+      Other Local Wi-Fi Networks:
+          <redacted>:
+
+              PHY Mode: 802.11ax
+              Channel: 53 (6GHz, 160MHz)
+              Signal / Noise: -61 dBm / -92 dBm
+              BSSID: 22:33:44:55:66:77
+              Security: WPA3 Personal
+
+          <redacted>:
+
+              PHY Mode: 802.11ac
+              Channel: 44 (5GHz, 80MHz)
+              Signal / Noise: -70 dBm / -94 dBm
+              BSSID: 33:44:55:66:77:88
+              Security: WPA2 Personal

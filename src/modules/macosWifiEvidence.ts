@@ -158,7 +158,7 @@ function parseNeighborNetworks(output: string, otherStart: number): MacOSNeighbo
   return neighbors;
 }
 
-function parseSystemProfiler(output: string): Partial<MacOSWiFiEvidence> {
+export function __parseSystemProfilerForTest(output: string): Partial<MacOSWiFiEvidence> {
   const currentStart = output.indexOf('Current Network Information:');
   if (currentStart < 0) return {};
 
@@ -198,6 +198,24 @@ function parseSystemProfiler(output: string): Partial<MacOSWiFiEvidence> {
       .sort((a, b) => a.channel - b.channel),
     neighborSSIDs: neighborDetails.map(n => n.ssid),
   };
+}
+
+function parseSystemProfiler(output: string): Partial<MacOSWiFiEvidence> {
+  return __parseSystemProfilerForTest(output);
+}
+
+export function __getRfProbeStateForTest(
+  rfInFlight: boolean,
+  cachedAt: number,
+  now: number,
+  lastProbeFailed: boolean
+): MacOSWiFiEvidence['rfProbeState'] {
+  const age = cachedAt ? now - cachedAt : undefined;
+  if (rfInFlight && !cachedAt) return 'pending';
+  if (lastProbeFailed && !cachedAt) return 'failed';
+  if (cachedAt && age != null && age < RF_CACHE_MS) return 'fresh';
+  if (cachedAt) return 'cached';
+  return 'pending';
 }
 
 async function getWiFiInterface(): Promise<{ iface?: string; mac?: string }> {
@@ -281,12 +299,12 @@ function getRfEvidence(): Partial<MacOSWiFiEvidence> {
   }
 
   const age = cachedAt ? now - cachedAt : undefined;
-  let rfProbeState: MacOSWiFiEvidence['rfProbeState'];
-  if (rfInFlight && !cachedAt) rfProbeState = 'pending';
-  else if (lastProbeFailed && !cachedAt) rfProbeState = 'failed';
-  else if (cachedAt && age != null && age < RF_CACHE_MS) rfProbeState = 'fresh';
-  else if (cachedAt) rfProbeState = 'cached';
-  else rfProbeState = 'pending';
+  const rfProbeState = __getRfProbeStateForTest(
+    Boolean(rfInFlight),
+    cachedAt,
+    now,
+    lastProbeFailed
+  );
 
   return {
     ...cachedRf,
