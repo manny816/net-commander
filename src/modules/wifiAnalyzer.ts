@@ -30,6 +30,10 @@ import { promises as fs } from 'fs';
 import { getNonce } from '../helpers/nonce';
 import { exportCsv, createCaptureFilePath } from '../helpers/exporter';
 import { gatherMacOSWiFiEvidence } from './macosWifiEvidence';
+import {
+  buildRfEvidence,
+  EvidenceRecord
+} from '../core/evidence';
 
 
 // =========================================================================
@@ -65,6 +69,13 @@ export interface WiFiInfo {
   connectedTimeSec?: number;
   inactiveTimeSec?: number;
   timestamp: string;
+
+  // Normalized JCG Evidence Schema v1 records for this sample.
+  evidence?: EvidenceRecord[];
+
+  // macOS RF probe cache metadata.
+  rfProbeState?: 'fresh' | 'cached' | 'pending' | 'failed';
+  rfProbeAgeMs?: number;
   neighborBars?: { channel: number; strength: number }[];
   neighborSSIDs?: string[];
   neighborDetails?: Array<{ ssid: string; channel: number; strength: number }>;
@@ -378,10 +389,23 @@ async function gatherWiFiInfo(): Promise<WiFiInfo> {
       }
     }
 
-return {
-      timestamp: new Date().toLocaleTimeString(),
+    const wifiInfo = {
+      timestamp: new Date().toISOString(),
       ...info
     } as WiFiInfo;
+
+    // Normalize the current RF sample into JCG Evidence Schema v1.
+    // Evidence generation must never prevent otherwise valid RF telemetry
+    // from being returned to the dashboard.
+    try {
+      wifiInfo.evidence = buildRfEvidence(wifiInfo);
+
+    } catch (e) {
+      console.warn('JCG RF evidence normalization failed:', e);
+      wifiInfo.evidence = [];
+    }
+
+    return wifiInfo;
   } catch (e) {
     console.error('WiFi Analyzer error', e);
     return { timestamp: new Date().toLocaleTimeString() };

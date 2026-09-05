@@ -18,6 +18,9 @@ export interface RfEvidenceInput {
   mcsIndex?: number;
   txRateMbps?: number;
 
+  rfProbeState?: 'fresh' | 'cached' | 'pending' | 'failed';
+  rfProbeAgeMs?: number;
+
   neighborDetails?: Array<{
     ssid?: string;
     bssid?: string;
@@ -34,9 +37,22 @@ export interface RfEvidenceInput {
 export function buildRfEvidence(
   info: RfEvidenceInput
 ): EvidenceRecord[] {
-  const observedAt = info.timestamp
-    ? new Date(info.timestamp).toISOString()
-    : new Date().toISOString();
+  const collectedAt = new Date().toISOString();
+
+  const sampleTimestamp = info.timestamp
+    ? new Date(info.timestamp).getTime()
+    : Date.now();
+
+  const rfAgeMs = Number.isFinite(info.rfProbeAgeMs)
+    ? Math.max(0, Number(info.rfProbeAgeMs))
+    : 0;
+
+  // system_profiler RF telemetry may come from the collector cache.
+  // Move observedAt backwards by the actual RF probe age so freshness
+  // represents evidence age rather than normalization latency.
+  const rfObservedAt = new Date(sampleTimestamp - rfAgeMs).toISOString();
+
+  const liveObservedAt = new Date(sampleTimestamp).toISOString();
 
   const source = {
     name: 'macOS Wi-Fi Evidence',
@@ -49,34 +65,41 @@ export function buildRfEvidence(
 
   const evidence: EvidenceRecord[] = [];
 
+  let rssiEvidenceId: string | undefined;
+  let noiseEvidenceId: string | undefined;
+
   if (Number.isFinite(info.signalDbm)) {
-    evidence.push(
-      createEvidence({
-        type: 'MEASURED',
-        name: 'wifi.rssi',
-        value: info.signalDbm,
-        unit: 'dBm',
-        source,
-        context,
-        observedAt,
-        confidence: 100
-      })
-    );
+    const record = createEvidence({
+      type: 'MEASURED',
+      name: 'wifi.rssi',
+      value: info.signalDbm,
+      unit: 'dBm',
+      source,
+      context,
+      observedAt: rfObservedAt,
+      collectedAt,
+      confidence: 100
+    });
+
+    rssiEvidenceId = record.id;
+    evidence.push(record);
   }
 
   if (Number.isFinite(info.noiseDbm)) {
-    evidence.push(
-      createEvidence({
-        type: 'MEASURED',
-        name: 'wifi.noiseFloor',
-        value: info.noiseDbm,
-        unit: 'dBm',
-        source,
-        context,
-        observedAt,
-        confidence: 100
-      })
-    );
+    const record = createEvidence({
+      type: 'MEASURED',
+      name: 'wifi.noiseFloor',
+      value: info.noiseDbm,
+      unit: 'dBm',
+      source,
+      context,
+      observedAt: rfObservedAt,
+      collectedAt,
+      confidence: 100
+    });
+
+    noiseEvidenceId = record.id;
+    evidence.push(record);
   }
 
   const snr =
@@ -98,9 +121,14 @@ export function buildRfEvidence(
           collector: 'rfEvidence'
         },
         context,
-        observedAt,
+        observedAt: rfObservedAt,
+        collectedAt,
         confidence: 100,
-        notes: ['SNR calculated as RSSI minus noise floor.']
+        notes: ['SNR calculated as RSSI minus noise floor.'],
+        derivedFrom: [
+          rssiEvidenceId,
+          noiseEvidenceId
+        ].filter((id): id is string => Boolean(id))
       })
     );
   }
@@ -113,7 +141,8 @@ export function buildRfEvidence(
         value: info.channel,
         source,
         context,
-        observedAt,
+        observedAt: rfObservedAt,
+        collectedAt,
         confidence: 100
       })
     );
@@ -128,7 +157,8 @@ export function buildRfEvidence(
         unit: 'MHz',
         source,
         context,
-        observedAt,
+        observedAt: rfObservedAt,
+        collectedAt,
         confidence: 100
       })
     );
@@ -142,7 +172,8 @@ export function buildRfEvidence(
         value: info.band,
         source,
         context,
-        observedAt,
+        observedAt: rfObservedAt,
+        collectedAt,
         confidence: 100
       })
     );
@@ -156,7 +187,8 @@ export function buildRfEvidence(
         value: info.mode,
         source,
         context,
-        observedAt,
+        observedAt: rfObservedAt,
+        collectedAt,
         confidence: 100
       })
     );
@@ -170,7 +202,8 @@ export function buildRfEvidence(
         value: info.mcsIndex,
         source,
         context,
-        observedAt,
+        observedAt: rfObservedAt,
+        collectedAt,
         confidence: 100
       })
     );
@@ -185,7 +218,8 @@ export function buildRfEvidence(
         unit: 'Mbps',
         source,
         context,
-        observedAt,
+        observedAt: rfObservedAt,
+        collectedAt,
         confidence: 100
       })
     );
@@ -199,8 +233,13 @@ export function buildRfEvidence(
         value: info.neighborDetails,
         source,
         context,
-        observedAt,
-        confidence: 100
+        observedAt: rfObservedAt,
+        collectedAt,
+        confidence: 100,
+        notes: [
+          `RF probe state: ${info.rfProbeState ?? 'unknown'}`,
+          `RF probe age: ${rfAgeMs} ms`
+        ]
       })
     );
   }
