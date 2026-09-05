@@ -9,9 +9,75 @@
 
 /* media/module-wifianalyzer/style.css */
 
+.layout {
+    grid-template-rows: auto auto auto auto 1fr auto;
+}
+
 .top-bar .controls {
     display: flex;
     gap: .5rem;
+    align-items: center;
+    min-width: 0;
+}
+
+#jcg-product-meta {
+    min-width: 0;
+}
+
+.jcg-attribution {
+    color: #A3E635;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    margin-bottom: 3px;
+    white-space: nowrap;
+}
+
+.jcg-restart {
+    color: var(--vscode-descriptionForeground);
+}
+
+.jcg-restart code {
+    padding: 2px 7px;
+    margin-left: 4px;
+    color: #A3E635;
+    background: rgba(163, 230, 53, 0.08);
+    border: 1px solid rgba(163, 230, 53, 0.35);
+    border-radius: 5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.evidence-provenance {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.5rem;
+    box-sizing: border-box;
+    margin: 0 0.65rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid rgba(163, 230, 53, 0.45);
+    border-left: 3px solid #A3E635;
+    border-radius: 4px;
+    background: var(--vscode-editorWidget-background);
+}
+
+.evidence-provenance-item {
+    min-width: 0;
+}
+
+.evidence-provenance-label {
+    color: var(--vscode-descriptionForeground);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.evidence-provenance-value {
+    margin-top: 0.2rem;
+    color: var(--vscode-editor-foreground);
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
 }
 
 .header {
@@ -89,6 +155,10 @@
     color: var(--vscode-testing-iconPassed);
 }
 
+.health-badge.very-good {
+    color: #A3E635;
+}
+
 .health-badge.fair,
 .health-badge.marginal {
     color: var(--vscode-editorWarning-foreground);
@@ -102,8 +172,95 @@
     color: var(--vscode-descriptionForeground);
 }
 
+.health-description {
+    min-height: 2.1em;
+    margin: 0.15rem 0 0.35rem 60px;
+    color: var(--vscode-descriptionForeground);
+    font-size: 0.71rem;
+    line-height: 1.3;
+}
+
+.rf-profile {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.55rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid color-mix(in srgb, var(--vscode-editorWidget-border) 55%, transparent);
+    font-size: 0.72rem;
+}
+
+.rf-profile span {
+    color: var(--vscode-descriptionForeground);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+.rf-profile strong {
+    color: var(--vscode-editor-foreground);
+    font-weight: 600;
+    text-align: right;
+}
+
+.rf-reference-ranges {
+    margin: 0 0.65rem;
+    border: 1px solid var(--vscode-editorWidget-border);
+    border-radius: 4px;
+    background: var(--vscode-editorWidget-background);
+}
+
+.rf-reference-ranges summary {
+    padding: 0.4rem 0.6rem;
+    color: var(--vscode-descriptionForeground);
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.rf-reference-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+    padding: 0 0.6rem 0.55rem;
+}
+
+.rf-reference-group {
+    min-width: 0;
+    color: var(--vscode-descriptionForeground);
+    font-family: var(--vscode-editor-font-family);
+    font-size: 0.7rem;
+    line-height: 1.45;
+}
+
+.rf-reference-group strong {
+    display: block;
+    margin-bottom: 0.15rem;
+    color: var(--vscode-editor-foreground);
+}
+
+.rf-reference-group div {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    border-top: 1px solid color-mix(in srgb, var(--vscode-editorWidget-border) 45%, transparent);
+}
+
+.rf-reference-group span {
+    color: var(--vscode-editor-foreground);
+    text-align: right;
+}
+
+.rf-reference-note {
+    padding: 0 0.6rem 0.55rem;
+    color: var(--vscode-descriptionForeground);
+    font-size: 0.68rem;
+    font-style: italic;
+    line-height: 1.35;
+}
+
 .middle {
     display: grid;
+    grid-row: 5;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(360px, auto));
     gap: 0.65rem;
@@ -254,6 +411,7 @@
 
 .footer {
     display: grid;
+    grid-row: 6;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: .65rem;
     padding: 0.65rem;
@@ -302,6 +460,10 @@
 }
 
 @media (max-width: 1100px) {
+    .evidence-provenance {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .header {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -317,6 +479,24 @@
 }
 
 @media (max-width: 700px) {
+    .top-bar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .top-bar .controls {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .jcg-attribution {
+        white-space: normal;
+    }
+
+    .evidence-provenance {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .header {
         grid-template-columns: 1fr;
     }

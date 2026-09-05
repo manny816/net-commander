@@ -34,21 +34,21 @@
   }
 
   function rssiAssessment(rssi) {
-    if (!Number.isFinite(rssi)) return { label: 'UNKNOWN', className: 'unknown' };
-    if (rssi >= -55) return { label: 'EXCELLENT', className: 'excellent' };
-    if (rssi >= -67) return { label: 'GOOD', className: 'good' };
-    if (rssi >= -70) return { label: 'FAIR', className: 'fair' };
-    if (rssi >= -75) return { label: 'MARGINAL', className: 'marginal' };
-    return { label: 'POOR', className: 'poor' };
+    if (!Number.isFinite(rssi)) return { label: 'UNKNOWN', className: 'unknown', description: 'No RSSI measurement is currently available.' };
+    if (rssi >= -50) return { label: 'EXCELLENT', className: 'excellent', description: 'Strong signal with substantial margin for typical enterprise applications.' };
+    if (rssi >= -60) return { label: 'VERY GOOD', className: 'very-good', description: 'Strong signal with good margin for typical enterprise applications.' };
+    if (rssi >= -67) return { label: 'GOOD', className: 'good', description: 'Generally suitable for enterprise data; validate against the selected application requirement.' };
+    if (rssi >= -75) return { label: 'MARGINAL', className: 'marginal', description: 'Approaching or below common enterprise design targets. Additional RF evidence is recommended.' };
+    return { label: 'POOR', className: 'poor', description: 'Signal is likely insufficient for reliable enterprise connectivity.' };
   }
 
   function snrAssessment(value) {
-    if (!Number.isFinite(value)) return { label: 'UNKNOWN', className: 'unknown' };
-    if (value >= 40) return { label: 'EXCELLENT', className: 'excellent' };
-    if (value >= 30) return { label: 'GOOD', className: 'good' };
-    if (value >= 25) return { label: 'FAIR', className: 'fair' };
-    if (value >= 20) return { label: 'MARGINAL', className: 'marginal' };
-    return { label: 'POOR', className: 'poor' };
+    if (!Number.isFinite(value)) return { label: 'UNKNOWN', className: 'unknown', description: 'No SNR measurement is currently available.' };
+    if (value >= 40) return { label: 'EXCELLENT', className: 'excellent', description: 'Signal is well above the measured noise floor.' };
+    if (value >= 30) return { label: 'VERY GOOD', className: 'very-good', description: 'Signal has strong margin above the measured noise floor.' };
+    if (value >= 25) return { label: 'GOOD', className: 'good', description: 'Generally suitable for enterprise data; validate against the selected application requirement.' };
+    if (value >= 20) return { label: 'MARGINAL', className: 'marginal', description: 'Reduced signal-to-noise margin may affect modulation, throughput or reliability.' };
+    return { label: 'POOR', className: 'poor', description: 'Low signal-to-noise margin can materially impair link performance.' };
   }
 
   function setBadge(elementId, assessment) {
@@ -56,6 +56,8 @@
     if (!el) return;
     el.textContent = assessment.label;
     el.className = 'health-badge ' + assessment.className;
+    const description = document.getElementById(elementId + '-description');
+    if (description) description.textContent = assessment.description;
   }
 
   function engineerHeader() {
@@ -63,41 +65,6 @@
     if (title) title.textContent = 'JCG Network TS Platform - RF Analyzer';
 
     const controls = document.querySelector('.top-bar .controls');
-if (controls && !document.getElementById('jcg-product-meta')) {
-  const meta = document.createElement('div');
-  meta.id = 'jcg-product-meta';
-  meta.style.textAlign = 'right';
-  meta.style.marginRight = '14px';
-  meta.style.fontSize = '11px';
-  meta.style.lineHeight = '1.5';
-
-  meta.innerHTML = `
-    <div style="
-      color:#A3E635;
-      font-weight:600;
-      font-size:12px;
-      letter-spacing:0.2px;
-      margin-bottom:3px;">
-      Developed by Manny Colón for JCG Solutions
-    </div>
-
-    <div style="color:var(--vscode-descriptionForeground);">
-      Developer restart:
-      <code style="
-        color:#A3E635;
-        background:rgba(163,230,53,0.08);
-        border:1px solid rgba(163,230,53,0.35);
-        border-radius:5px;
-        padding:2px 7px;
-        margin-left:4px;
-        font-weight:600;">
-        npm run dev:restart
-      </code>
-    </div>
-  `;
-
-  controls.insertBefore(meta, controls.firstChild);
-}
     if (controls && !document.getElementById('jcg-product-meta')) {
       const meta = document.createElement('div');
       meta.id = 'jcg-product-meta';
@@ -105,15 +72,29 @@ if (controls && !document.getElementById('jcg-product-meta')) {
       meta.style.marginRight = '14px';
       meta.style.fontSize = '11px';
       meta.style.lineHeight = '1.45';
-      meta.style.color = 'var(--vscode-descriptionForeground)';
       meta.innerHTML =
-        '<div>Developed by <strong>Manny Colón</strong> for <strong>JCG Solutions</strong></div>' +
-        '<div>Developer restart: <code>npm run dev:restart</code></div>';
+        '<div class="jcg-attribution">Developed by Manny Colón for JCG Solutions</div>' +
+        '<div class="jcg-restart">Developer restart: <code>npm run dev:restart</code></div>';
       controls.insertBefore(meta, controls.firstChild);
     }
 
     const header = document.querySelector('.header');
     if (!header) return;
+
+    if (!document.getElementById('evidence-provenance')) {
+      const provenance = document.createElement('section');
+      provenance.id = 'evidence-provenance';
+      provenance.className = 'evidence-provenance';
+      provenance.setAttribute('aria-label', 'Evidence provenance');
+      provenance.innerHTML = ['Source', 'Collector', 'State', 'Age', 'Records', 'Type']
+        .map(label => `
+          <div class="evidence-provenance-item">
+            <div class="evidence-provenance-label">${label}</div>
+            <div id="evidence-${label.toLowerCase()}" class="evidence-provenance-value">n/a</div>
+          </div>`)
+        .join('');
+      header.parentNode.insertBefore(provenance, header);
+    }
 
     header.innerHTML = `
       <div class="section metric-card connection-card">
@@ -126,8 +107,12 @@ if (controls && !document.getElementById('jcg-product-meta')) {
       <div class="section metric-card">
         <div class="metric-title">RF Health</div>
         <div class="health-line"><span>RSSI</span><strong id="rssi-val">—</strong><span id="rssi-health" class="health-badge unknown">UNKNOWN</span></div>
+        <div id="rssi-health-description" class="health-description">No RSSI measurement is currently available.</div>
         <div class="health-line"><span>SNR</span><strong id="snr-val">—</strong><span id="snr-health" class="health-badge unknown">UNKNOWN</span></div>
+        <div id="snr-health-description" class="health-description">No SNR measurement is currently available.</div>
         <div class="metric-row"><span>Noise floor</span><strong id="noise-val">—</strong></div>
+        <div class="rf-profile"><span>RF DESIGN PROFILE</span><strong>General Enterprise</strong></div>
+        <!-- TODO: Future profiles may include General Enterprise, Voice / Real-Time, Warehouse / Scanners, High Density, IoT and Custom. -->
       </div>
       <div class="section metric-card">
         <div class="metric-title">Radio / PHY</div>
@@ -146,6 +131,41 @@ if (controls && !document.getElementById('jcg-product-meta')) {
         <div class="metric-row"><span>Dropped TX</span><strong id="tx-dropped-val">—</strong></div>
         <div class="metric-row"><span>Client MAC</span><strong id="mac-val">—</strong></div>
       </div>`;
+
+    if (!document.getElementById('rf-reference-ranges')) {
+      const referenceRanges = document.createElement('details');
+      referenceRanges.id = 'rf-reference-ranges';
+      referenceRanges.className = 'rf-reference-ranges';
+      referenceRanges.innerHTML = `
+        <summary>View RF Reference Ranges</summary>
+        <div class="rf-reference-grid">
+          <div class="rf-reference-group">
+            <strong>RSSI Reference</strong>
+            <div>&gt;= -50 dBm <span>Excellent</span></div>
+            <div>-51 to -60 <span>Very Good</span></div>
+            <div>-61 to -67 <span>Good</span></div>
+            <div>-68 to -75 <span>Marginal</span></div>
+            <div>&lt; -75 dBm <span>Poor</span></div>
+          </div>
+          <div class="rf-reference-group">
+            <strong>SNR Reference</strong>
+            <div>&gt;= 40 dB <span>Excellent</span></div>
+            <div>30-39 dB <span>Very Good</span></div>
+            <div>25-29 dB <span>Good</span></div>
+            <div>20-24 dB <span>Marginal</span></div>
+            <div>&lt; 20 dB <span>Poor</span></div>
+          </div>
+          <div class="rf-reference-group">
+            <strong>Noise Reference</strong>
+            <div>&lt;= -90 dBm <span>Excellent</span></div>
+            <div>-89 to -85 <span>Good</span></div>
+            <div>-84 to -80 <span>Elevated</span></div>
+            <div>&gt; -80 dBm <span>Poor</span></div>
+          </div>
+        </div>
+        <div class="rf-reference-note">Reference ranges are engineering guidance. Application requirements and client capabilities determine the actual design target.</div>`;
+      header.parentNode.insertBefore(referenceRanges, header.nextSibling);
+    }
 
     const neighborHeader = document.querySelector('#neighbor-signal-block .chart-header');
     if (neighborHeader) {
@@ -261,6 +281,39 @@ if (controls && !document.getElementById('jcg-product-meta')) {
     setBadge('rssi-health', rssiAssessment(Number(info.signalDbm)));
     setBadge('snr-health', snrAssessment(currentSnr));
     updateTraffic(info);
+  }
+
+  function renderEvidenceProvenance(info) {
+    const evidence = Array.isArray(info.evidence) ? info.evidence : [];
+    const source = evidence[0] && evidence[0].source ? evidence[0].source : {};
+    const state = typeof info.rfProbeState === 'string' ? info.rfProbeState.toUpperCase() : 'UNKNOWN';
+    const ageMs = Number(info.rfProbeAgeMs);
+    const age = Number.isFinite(ageMs)
+      ? ageMs < 1000 ? `${Math.round(ageMs)} ms` : `${(ageMs / 1000).toFixed(1)} sec`
+      : 'n/a';
+    const stateColor = state === 'FRESH'
+      ? '#A3E635'
+      : state === 'CACHED'
+        ? 'var(--vscode-editorWarning-foreground)'
+        : state === 'FAILED'
+          ? 'var(--vscode-testing-iconFailed)'
+          : 'var(--vscode-descriptionForeground)';
+
+    const values = {
+      source: source.name || 'n/a',
+      collector: source.collector || 'n/a',
+      state,
+      age,
+      records: evidence.length,
+      type: 'RF'
+    };
+    Object.entries(values).forEach(([key, value]) => {
+      const el = document.getElementById(`evidence-${key}`);
+      if (el) {
+        el.textContent = String(value);
+        if (key === 'state') el.style.color = stateColor;
+      }
+    });
   }
 
   function updateRawEvidence(info) {
@@ -405,6 +458,7 @@ if (controls && !document.getElementById('jcg-product-meta')) {
     }
     if (csvBtn) csvBtn.disabled = false;
     updateSummary(msg);
+    renderEvidenceProvenance(msg);
     updateRawEvidence(msg);
     updateCharts(msg);
     renderNeighbors(msg);
